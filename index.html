@@ -72,7 +72,7 @@
       border: 1px solid rgba(245,158,11,.2); color: var(--warning); font-size: 13px; font-weight: 600;
     }
 
-    /* Standard Buttons */
+    /* Buttons */
     .btn-main, .btn-secondary, .btn-danger {
       border-radius: 10px; padding: 9px 18px; border: 1px solid transparent;
       font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center;
@@ -349,9 +349,9 @@
 
 <script>
   /* =========================================================================
-     HYBRID STORAGE ENGINE (Matches Learnstitution)
-     - Defaults to LocalStorage immediately (0 backend setup required)
-     - Automatically syncs to Firebase if connected
+     HYBRID STORAGE ENGINE
+     - Loads localStorage instantly so the app is always dynamic
+     - Gracefully links to Firebase in the background without blocking execution
   ========================================================================= */
   const firebaseConfig = {
     apiKey: "AIzaSyBtO6wiJLk-9zjtvA7EJC6bJ1AEGcb6_VU",
@@ -407,7 +407,6 @@
     showToast.timer = setTimeout(() => { t.className = ''; }, 3500);
   }
 
-  // Load from local storage immediately so the page is instantly responsive
   function loadFromLocalStorage() {
     const raw = localStorage.getItem('daily_ops_data');
     if (raw) {
@@ -419,7 +418,6 @@
     renderUI();
   }
 
-  // Save changes (local storage + cloud if logged in)
   function persist() {
     localStorage.setItem('daily_ops_data', JSON.stringify(appData));
     if (usingFirebase && userRef && currentUser) {
@@ -428,11 +426,11 @@
   }
 
   function initApp() {
-    // 1. Instant local startup
+    // 1. Immediately read local storage so the UI is active right away
     loadFromLocalStorage();
     startClock();
 
-    // 2. Connect Firebase gracefully in the background
+    // 2. Safely connect Firebase without blocking UI if offline
     try {
       firebase.initializeApp(firebaseConfig);
       
@@ -475,7 +473,7 @@
         }
       });
     } catch (e) {
-      console.warn("Operating in pure offline mode:", e);
+      console.warn("Operating in pure local storage mode:", e);
       usingFirebase = false;
       setStatus('local');
     }
@@ -595,13 +593,13 @@
   }
 
   /* =========================================================================
-     PROJECT CONTROLS (Immediate execution)
+     PROJECT CONTROLS
   ========================================================================= */
   function handleStart(id) {
     const today = todayKey();
     if (!appData.dailyLogs[today]) appData.dailyLogs[today] = {};
 
-    // Pause any currently running project
+    // Pause any previously running project
     if (activeProjectId && activeProjectId !== id) {
       const targetDate = activeProjectDate || today;
       const oldLog = appData.dailyLogs[targetDate]?.[activeProjectId];
@@ -681,7 +679,7 @@
   }
 
   /* =========================================================================
-     MODAL CONTROLS & INSTANT SAVE
+     MODAL CONTROLS & SAVE LOGIC
   ========================================================================= */
   function openAddModal() {
     $('schedule-modal').classList.add('active');$('project-name').focus();
@@ -727,6 +725,7 @@
     const log = appData.dailyLogs[todayKey()]?.[id] || {};
 
     $('edit-project-id').value = id;
+    // Correct logical OR syntax:
     $('edit-project-name').value = p.name \vert{}\vert{} '';$('edit-project-minutes').value = Math.round(targetMinutes(p));
     $('edit-logged-minutes').value = Math.floor(elapsedNow(log) / 60);$('edit-modal').classList.add('active');
   }
@@ -948,6 +947,7 @@
     a.remove();
   }
 
+  // Launch application
   initApp();
 </script>
 </body>
