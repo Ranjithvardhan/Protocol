@@ -84,9 +84,9 @@
     .btn-danger { background: rgba(239,68,68,.1); color: var(--danger); border-color: rgba(239,68,68,.2); }
     .btn-danger:hover { background: rgba(239,68,68,.2); }
 
-    /* Global Timers */
+    /* Global Timers (Updated to 3 columns) */
     .global-timers {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 24px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 20px; box-shadow: 0 20px 40px -10px rgba(0,0,0,.3); position: sticky; top: 24px; z-index: 40;
     }
@@ -99,8 +99,8 @@
       border-color: rgba(59,130,246,.5); background: rgba(59,130,246,.1);
       box-shadow: 0 0 25px rgba(59,130,246,.15);
     }
-    .timer-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-    .timer-value { font-family: 'IBM Plex Mono', monospace; font-size: 32px; font-weight: 700; color: var(--text); }
+    .timer-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .timer-value { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 700; color: var(--text); transition: color 0.3s ease; }
 
     /* Main Grid */
     .main-grid { display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: start; }
@@ -215,11 +215,12 @@
     .toast-error { border-color: rgba(239,68,68,.5); border-left: 4px solid var(--danger); }
     .toast-success { border-color: rgba(16,185,129,.5); border-left: 4px solid var(--success); }
 
+    @media(max-width: 1100px) { .global-timers { grid-template-columns: 1fr; } }
     @media(max-width: 950px) { .main-grid { grid-template-columns: 1fr; } }
     @media(max-width: 650px) {
       .layout { width: calc(100% - 32px); padding-top: 24px; }
       .header-controls { justify-content: flex-start; }
-      .global-timers { grid-template-columns: 1fr; position: static; }
+      .global-timers { position: static; }
       .chart-row { grid-template-columns: 85px 1fr 55px; }
       .card { padding: 20px; }
     }
@@ -248,7 +249,7 @@
     </div>
   </header>
 
-  <!-- Sticky Global Timers -->
+  <!-- Global Timers (Holistic + Active Project + 10 PM Margin Timer) -->
   <div class="global-timers">
     <div class="timer-block">
       <span class="timer-label">Overall Time Remaining</span>
@@ -257,6 +258,10 @@
     <div id="active-timer-block" class="timer-block">
       <span id="global-active-title" class="timer-label">No Active Project</span>
       <div id="global-active-timer" class="timer-value">00:00:00</div>
+    </div>
+    <div id="margin-timer-block" class="timer-block">
+      <span id="margin-timer-title" class="timer-label">Buffer to 10:00 PM</span>
+      <div id="margin-timer-value" class="timer-value">00:00:00</div>
     </div>
   </div>
 
@@ -370,7 +375,7 @@
 
   let appData = {
     projects: {},
-    archivedProjects: {}, // Holds deleted project metadata permanently for analytics
+    archivedProjects: {},
     dailyLogs: {}
   };
 
@@ -549,7 +554,6 @@
     renderUI();
   };
 
-  // Delete project from visible dashboard while permanently preserving for analytics
   window.deleteProject = function(id) {
     const p = appData.projects[id];
     if (!p) return;
@@ -558,19 +562,16 @@
       return;
     }
 
-    // Stop timer if actively running
     if (activeProjectId === id) {
       window.handlePause(id);
     }
 
-    // Move to archived metadata dictionary
     if (!appData.archivedProjects) appData.archivedProjects = {};
     appData.archivedProjects[id] = {
       ...p,
       deletedAt: Date.now()
     };
 
-    // Remove from active visible projects list
     delete appData.projects[id];
 
     persist();
@@ -583,7 +584,6 @@
     const today = todayKey();
     if (!appData.dailyLogs[today]) appData.dailyLogs[today] = {};
 
-    // Rule: No other project can start if another is currently running
     if (activeProjectId && activeProjectId !== id) {
       showToast('Another project is currently active. Pause or finish it first.', 'error');
       return;
@@ -626,7 +626,6 @@
   };
 
   window.handleDone = function(id) {
-    // Rule: Done button can only be fired on the actively running project
     if (activeProjectId !== id) {
       showToast('Only the currently active project can be marked done.', 'error');
       return;
@@ -686,7 +685,6 @@
     }
   };
 
-  // Analytics Export retains ALL projects (Active + Deleted/Archived)
   window.exportAnalytics = function() {
     if (!appData.dailyLogs || !Object.keys(appData.dailyLogs).length) {
       showToast('No logged data available for export.', 'error');
@@ -718,7 +716,7 @@
   };
 
   /* =========================================================================
-     TIMERS, CLOCKS & CALCULATION ENGINE
+     TIMERS, CLOCKS & 10:00 PM BUFFER CALCULATION
   ========================================================================= */
   function targetMinutes(p) {
     if (!p) return 0;
@@ -760,9 +758,10 @@
   }
 
   function formatTime(sec) {
-    sec = Math.max(0, Math.floor(Number(sec) || 0));
+    const isNegative = sec < 0;
+    sec = Math.abs(Math.floor(Number(sec) || 0));
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    return (isNegative ? '-' : '') + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   }
 
   function humanMinutes(sec) {
@@ -789,7 +788,7 @@
   function updateClocks() {
     const today = todayKey();
     const logs = appData.dailyLogs[today] || {};
-    let total = 0;
+    let totalRemSecs = 0;
 
     Object.keys(appData.projects).forEach(function(id) {
       const p = appData.projects[id];
@@ -798,7 +797,7 @@
       const elapsed = elapsedNow(log);
       const isDone = Boolean(log.completed);
       const rem = isDone ? 0 : Math.max(0, targetSec - elapsed);
-      total += rem;
+      totalRemSecs += rem;
 
       const fill = $('chart-bar-' + id);
       const time = $('chart-time-' + id);
@@ -812,9 +811,9 @@
     });
 
     const gTotal = $('global-total-timer');
-    if (gTotal) gTotal.textContent = formatTime(total);
+    if (gTotal) gTotal.textContent = formatTime(totalRemSecs);
     const cTotal = $('chart-total-remaining');
-    if (cTotal) cTotal.textContent = humanMinutes(total);
+    if (cTotal) cTotal.textContent = humanMinutes(totalRemSecs);
 
     if (activeProjectId && appData.projects[activeProjectId]) {
       const p = appData.projects[activeProjectId];
@@ -825,6 +824,35 @@
       $('global-active-timer').textContent = formatTime(rem);
     } else {
       $('global-active-title').textContent = 'No Active Project';$('global-active-timer').textContent = '00:00:00';
+    }
+
+    // --- NEW: 10:00 PM Buffer / Deadline Margin Calculation ---
+    const now = new Date();
+    const target10PM = new Date();
+    target10PM.setHours(22, 0, 0, 0); // 10:00 PM today
+
+    const secsUntil10PM = Math.floor((target10PM.getTime() - now.getTime()) / 1000);
+    const bufferSecs = secsUntil10PM - totalRemSecs;
+
+    const marginTimerVal = $('margin-timer-value');
+    const marginTimerTitle = $('margin-timer-title');
+
+    if (marginTimerVal && marginTimerTitle) {
+      marginTimerVal.textContent = formatTime(bufferSecs);
+
+      if (bufferSecs < 0) {
+        // Not enough time left to finish before 10 PM
+        marginTimerVal.style.color = '#ef4444'; // Red
+        marginTimerTitle.textContent = 'Deficit to 10:00 PM';
+      } else if (bufferSecs <= 3600) {
+        // Less than 1 hour of buffer remaining
+        marginTimerVal.style.color = '#f59e0b'; // Yellow
+        marginTimerTitle.textContent = 'Buffer to 10 PM (< 1h)';
+      } else {
+        // Safe buffer (> 1 hour)
+        marginTimerVal.style.color = '#10b981'; // Green
+        marginTimerTitle.textContent = 'Buffer to 10:00 PM';
+      }
     }
   }
 
@@ -871,7 +899,6 @@
                      '<button class="btn-icon delete" title="Delete Project" onclick="deleteProject(\'' + id + '\')">🗑</button>' +
                    '</div>';
       } else {
-        // Condition: Start is disabled if another project is running
         const startDisabled = hasRunningProject && !isActive;
 
         ctrlHtml = '<div class="project-controls">' +
@@ -996,13 +1023,11 @@
       dateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
     
-    // Read local cache immediately
     loadFromLocalStorage();
     determineActive();
     renderUI();
     startClock();
 
-    // Firebase background initialization
     try {
       if (typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
@@ -1054,7 +1079,6 @@
     }
   }
 
-  // Ensure DOM is ready before invoking app runner
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
   } else {
