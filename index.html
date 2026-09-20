@@ -109,15 +109,15 @@
     .btn-danger { background: rgba(239,68,68,.1); color: var(--danger); border-color: rgba(239,68,68,.2); }
     .btn-danger:hover { background: rgba(239,68,68,.2); }
 
-    /* Global Timers */
+    /* Global Sticky Timers: 4 Columns */
     .global-timers {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 24px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 22px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 20px; box-shadow: 0 20px 40px -10px rgba(0,0,0,.3); position: sticky; top: 24px; z-index: 40;
     }
     .timer-block {
       min-height: 105px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--border); padding: 16px;
+      border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--border); padding: 14px;
       transition: all 0.3s ease; text-align: center;
     }
     .timer-block.active {
@@ -125,7 +125,7 @@
       box-shadow: 0 0 25px rgba(59,130,246,.15);
     }
     .timer-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-    .timer-value { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 700; color: var(--text); transition: color 0.3s ease; }
+    .timer-value { font-family: 'IBM Plex Mono', monospace; font-size: 24px; font-weight: 700; color: var(--text); transition: color 0.3s ease; }
 
     /* Main Grid */
     .main-grid { display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: start; }
@@ -240,12 +240,12 @@
     .toast-error { border-color: rgba(239,68,68,.5); border-left: 4px solid var(--danger); }
     .toast-success { border-color: rgba(16,185,129,.5); border-left: 4px solid var(--success); }
 
-    @media(max-width: 1100px) { .global-timers { grid-template-columns: 1fr; } }
+    @media(max-width: 1200px) { .global-timers { grid-template-columns: repeat(2, 1fr); } }
     @media(max-width: 950px) { .main-grid { grid-template-columns: 1fr; } }
     @media(max-width: 650px) {
       .layout { width: calc(100% - 32px); padding-top: 24px; }
       .header-controls { justify-content: flex-start; }
-      .global-timers { position: static; }
+      .global-timers { grid-template-columns: 1fr; position: static; }
       .chart-row { grid-template-columns: 85px 1fr 55px; }
       .card { padding: 20px; }
       .wakeup-banner { flex-direction: column; align-items: flex-start; }
@@ -287,7 +287,7 @@
     </div>
   </div>
 
-  <!-- Global Timers Array: 1) Holistic Work 2) Active Project 3) Leisure & Mundane Tasks -->
+  <!-- Global Timers Array: 4 Dedicated Timers -->
   <div class="global-timers">
     <div class="timer-block">
       <span class="timer-label">Overall Scheduled Work</span>
@@ -297,9 +297,13 @@
       <span id="global-active-title" class="timer-label">No Active Project</span>
       <div id="global-active-timer" class="timer-value">00:00:00</div>
     </div>
+    <div id="margin-timer-block" class="timer-block">
+      <span id="margin-timer-title" class="timer-label">10:00 PM Deadline Buffer</span>
+      <div id="margin-timer-value" class="timer-value">00:00:00</div>
+    </div>
     <div id="leisure-timer-block" class="timer-block">
       <span id="leisure-timer-title" class="timer-label">Leisure & Chores Pool</span>
-      <div id="leisure-timer-value" class="timer-value">00:00:00</div>
+      <div id="leisure-timer-value" class="timer-value">--:--:--</div>
     </div>
   </div>
 
@@ -790,7 +794,7 @@
   };
 
   /* =========================================================================
-     TIMERS, CLOCKS & LEISURE CALCULATION ENGINE
+     TIMERS, CLOCKS & DUAL CALCULATION ENGINE
   ========================================================================= */
   function isWakeupLoggedToday() {
     const today = todayKey();
@@ -905,7 +909,39 @@
       $('global-active-title').textContent = 'No Active Project';$('global-active-timer').textContent = '00:00:00';
     }
 
-    // --- LEISURE & CHORES POOL (UNTIL 10:00 PM) ---
+    const now = new Date();
+    const target10PM = new Date();
+    target10PM.setHours(22, 0, 0, 0); // 10:00 PM cutoff
+
+    // =========================================================================
+    // 1) 10:00 PM DEADLINE BUFFER (Preserved: Independent of Wakeup Time)
+    // Buffer = (Seconds from Current Moment to 10 PM) - (Remaining Focus Work)
+    // =========================================================================
+    const secsUntil10PM = Math.floor((target10PM.getTime() - now.getTime()) / 1000);
+    const deadlineBufferSecs = secsUntil10PM - totalRemSecs;
+
+    const marginTimerVal = $('margin-timer-value');
+    const marginTimerTitle = $('margin-timer-title');
+
+    if (marginTimerVal && marginTimerTitle) {
+      marginTimerVal.textContent = formatTime(deadlineBufferSecs);
+
+      if (deadlineBufferSecs < 0) {
+        marginTimerVal.style.color = '#ef4444'; // Red (Deficit)
+        marginTimerTitle.textContent = '10 PM Deficit (Overdue)';
+      } else if (deadlineBufferSecs <= 3600) {
+        marginTimerVal.style.color = '#f59e0b'; // Yellow (<= 1 hr margin)
+        marginTimerTitle.textContent = '10 PM Buffer (< 1h)';
+      } else {
+        marginTimerVal.style.color = '#10b981'; // Green (> 1 hr margin)
+        marginTimerTitle.textContent = '10:00 PM Deadline Buffer';
+      }
+    }
+
+    // =========================================================================
+    // 2) LEISURE & CHORES POOL (Takes Wakeup Time into account)
+    // Depletes continuously whenever NO project is currently active
+    // =========================================================================
     const leisureValEl = $('leisure-timer-value');
     const leisureTitleEl = $('leisure-timer-title');
 
@@ -913,27 +949,20 @@
       if (!isWakeupLoggedToday()) {
         leisureValEl.textContent = "--:--:--";
         leisureValEl.style.color = "var(--muted)";
-        leisureTitleEl.textContent = "Log Wake-up Time First";
+        leisureTitleEl.textContent = "Log Wake-Up Time First";
       } else {
-        const now = new Date();
-        const target10PM = new Date();
-        target10PM.setHours(22, 0, 0, 0); // 10:00 PM cutoff
-
-        // Remaining seconds until 10 PM
-        const secsUntil10PM = Math.floor((target10PM.getTime() - now.getTime()) / 1000);
-        
-        // Leisure Pool = Available time to 10PM minus all remaining scheduled work
+        // Leisure Pool = Remaining time until 10PM - Remaining project work to complete
         const leisurePoolSecs = secsUntil10PM - totalRemSecs;
         leisureValEl.textContent = formatTime(leisurePoolSecs);
 
         if (leisurePoolSecs < 0) {
-          leisureValEl.style.color = '#ef4444'; // Red (Deficit)
+          leisureValEl.style.color = '#ef4444'; // Red (Deficit / Overtime)
           leisureTitleEl.textContent = 'Leisure Deficit (Overtime)';
         } else if (leisurePoolSecs <= 3600) {
-          leisureValEl.style.color = '#f59e0b'; // Yellow (<= 1 hr)
+          leisureValEl.style.color = '#f59e0b'; // Yellow (<= 1 hr left)
           leisureTitleEl.textContent = 'Leisure & Chores (< 1h)';
         } else {
-          leisureValEl.style.color = '#10b981'; // Green (> 1 hr)
+          leisureValEl.style.color = '#10b981'; // Green (Safe Leisure Room)
           leisureTitleEl.textContent = 'Leisure & Chores Pool';
         }
       }
@@ -964,9 +993,8 @@
       if (inp) inp.value = logged.time;
     } else {
       statusText.innerHTML = `Not registered today. <span style="color:var(--danger)">All task timers locked</span> until wake-up time is logged.`;
-      // Leaves input blank so you manually select the time
       if (inp && !inp.value) {
-        inp.value = '';
+        inp.value = ''; // Strictly left blank
       }
     }
 
