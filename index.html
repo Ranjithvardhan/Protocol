@@ -90,6 +90,8 @@
     .status-badge.online { color: var(--success); border-color: rgba(16,185,129,0.3); }
     .status-badge.local .status-dot { background: var(--warning); }
     .status-badge.local { color: var(--warning); border-color: rgba(245,158,11,0.3); }
+    .status-badge.error .status-dot { background: var(--danger); }
+    .status-badge.error { color: var(--danger); border-color: rgba(239,68,68,0.3); }
 
     .streak-badge {
       padding: 8px 16px; border-radius: 99px; background: rgba(245,158,11,.1);
@@ -109,7 +111,7 @@
     .btn-danger { background: rgba(239,68,68,.1); color: var(--danger); border-color: rgba(239,68,68,.2); }
     .btn-danger:hover { background: rgba(239,68,68,.2); }
 
-    /* Global Sticky Timers: 4 Columns */
+    /* Global Timers: 4 Columns */
     .global-timers {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 22px;
       background: var(--surface); border: 1px solid var(--border);
@@ -419,7 +421,7 @@
     projects: {},
     archivedProjects: {},
     dailyLogs: {},
-    wakeups: {} // Format: { "YYYY-MM-DD": { time: "HH:MM", timestamp: 123456789 } }
+    wakeups: {}
   };
 
   let currentCalDate = new Date();
@@ -435,17 +437,20 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  function setStatus(mode) {
+  function setStatus(mode, customText) {
     const badge = $('statusBadge');
     const text = $('statusText');
     if (!badge || !text) return;
-    badge.classList.remove('online', 'local');
+    badge.classList.remove('online', 'local', 'error');
     if (mode === 'online') {
       badge.classList.add('online');
-      text.textContent = 'Cloud Connected';
+      text.textContent = customText || 'Cloud Connected';
+    } else if (mode === 'error') {
+      badge.classList.add('error');
+      text.textContent = customText || 'Sync Error';
     } else {
       badge.classList.add('local');
-      text.textContent = 'Local Storage Mode';
+      text.textContent = customText || 'Local Storage Mode';
     }
   }
 
@@ -476,17 +481,19 @@
   }
 
   function persist() {
+    // Save to local device
     try {
       localStorage.setItem('daily_ops_data', JSON.stringify(appData));
     } catch (e) {
       console.error(e);
     }
+    // Save to Firebase Cloud if logged in
     if (usingFirebase && userRef && currentUser) {
-      try {
-        userRef.set(appData);
-      } catch (e) {
-        console.warn("Cloud sync failed:", e);
-      }
+      userRef.set(appData).catch(function(err) {
+        console.error("Firebase write error:", err);
+        setStatus('error', 'Sync Permission Denied');
+        showToast("Cloud sync failed: " + err.message, "error");
+      });
     }
   }
 
@@ -914,8 +921,7 @@
     target10PM.setHours(22, 0, 0, 0); // 10:00 PM cutoff
 
     // =========================================================================
-    // 1) 10:00 PM DEADLINE BUFFER (Preserved: Independent of Wakeup Time)
-    // Buffer = (Seconds from Current Moment to 10 PM) - (Remaining Focus Work)
+    // 1) 10:00 PM DEADLINE BUFFER (Color Coded: Red/Yellow/Green)
     // =========================================================================
     const secsUntil10PM = Math.floor((target10PM.getTime() - now.getTime()) / 1000);
     const deadlineBufferSecs = secsUntil10PM - totalRemSecs;
@@ -927,20 +933,19 @@
       marginTimerVal.textContent = formatTime(deadlineBufferSecs);
 
       if (deadlineBufferSecs < 0) {
-        marginTimerVal.style.color = '#ef4444'; // Red (Deficit)
+        marginTimerVal.style.color = '#ef4444'; // Red
         marginTimerTitle.textContent = '10 PM Deficit (Overdue)';
       } else if (deadlineBufferSecs <= 3600) {
-        marginTimerVal.style.color = '#f59e0b'; // Yellow (<= 1 hr margin)
+        marginTimerVal.style.color = '#f59e0b'; // Yellow (<= 1 hr)
         marginTimerTitle.textContent = '10 PM Buffer (< 1h)';
       } else {
-        marginTimerVal.style.color = '#10b981'; // Green (> 1 hr margin)
+        marginTimerVal.style.color = '#10b981'; // Green (> 1 hr)
         marginTimerTitle.textContent = '10:00 PM Deadline Buffer';
       }
     }
 
     // =========================================================================
-    // 2) LEISURE & CHORES POOL (Takes Wakeup Time into account)
-    // Depletes continuously whenever NO project is currently active
+    // 2) LEISURE & CHORES POOL (Color Coded: Takes Wakeup Time into account)
     // =========================================================================
     const leisureValEl = $('leisure-timer-value');
     const leisureTitleEl = $('leisure-timer-title');
@@ -951,18 +956,17 @@
         leisureValEl.style.color = "var(--muted)";
         leisureTitleEl.textContent = "Log Wake-Up Time First";
       } else {
-        // Leisure Pool = Remaining time until 10PM - Remaining project work to complete
         const leisurePoolSecs = secsUntil10PM - totalRemSecs;
         leisureValEl.textContent = formatTime(leisurePoolSecs);
 
         if (leisurePoolSecs < 0) {
-          leisureValEl.style.color = '#ef4444'; // Red (Deficit / Overtime)
+          leisureValEl.style.color = '#ef4444'; // Red
           leisureTitleEl.textContent = 'Leisure Deficit (Overtime)';
         } else if (leisurePoolSecs <= 3600) {
-          leisureValEl.style.color = '#f59e0b'; // Yellow (<= 1 hr left)
+          leisureValEl.style.color = '#f59e0b'; // Yellow
           leisureTitleEl.textContent = 'Leisure & Chores (< 1h)';
         } else {
-          leisureValEl.style.color = '#10b981'; // Green (Safe Leisure Room)
+          leisureValEl.style.color = '#10b981'; // Green
           leisureTitleEl.textContent = 'Leisure & Chores Pool';
         }
       }
@@ -994,7 +998,7 @@
     } else {
       statusText.innerHTML = `Not registered today. <span style="color:var(--danger)">All task timers locked</span> until wake-up time is logged.`;
       if (inp && !inp.value) {
-        inp.value = ''; // Strictly left blank
+        inp.value = ''; // Kept completely blank
       }
     }
 
@@ -1154,7 +1158,7 @@
   }
 
   /* =========================================================================
-     APPLICATION BOOTSTRAPPER
+     APPLICATION BOOTSTRAPPER (CLOUD PRIORITY SYNC)
   ========================================================================= */
   function initApp() {
     const dateEl = $('current-date-display');
@@ -1162,11 +1166,13 @@
       dateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
     
+    // 1. Initial local render
     loadFromLocalStorage();
     determineActive();
     renderUI();
     startClock();
 
+    // 2. Firebase synchronization
     try {
       if (typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
@@ -1175,7 +1181,7 @@
           if (snap.val() === true && currentUser) {
             usingFirebase = true;
             setStatus('online');
-          } else {
+          } else if (!currentUser) {
             usingFirebase = false;
             setStatus('local');
           }
@@ -1188,21 +1194,35 @@
             $('btn-login').style.display = 'none';$('btn-logout').style.display = 'inline-flex';
 
             userRef = firebase.database().ref('users/' + user.uid);
+            usingFirebase = true;
+            setStatus('online');
+
+            // Pull cloud data into local memory
             userRef.on('value', function(snap) {
-              const val = snap.val();
-              if (val) {
-                appData = val;
+              const cloudVal = snap.val();
+              if (cloudVal && typeof cloudVal === 'object') {
+                appData = cloudVal;
                 if (!appData.projects) appData.projects = {};
                 if (!appData.archivedProjects) appData.archivedProjects = {};
                 if (!appData.dailyLogs) appData.dailyLogs = {};
                 if (!appData.wakeups) appData.wakeups = {};
+
                 localStorage.setItem('daily_ops_data', JSON.stringify(appData));
                 determineActive();
                 renderUI();
+              } else {
+                // If cloud is empty, seed it with current device data
+                userRef.set(appData).catch(function(err) {
+                  console.error(err);
+                  setStatus('error', 'Check Database Rules');
+                  showToast("Cloud sync failed: " + err.message, "error");
+                });
               }
+            }, function(error) {
+              console.error("Realtime read failed:", error);
+              setStatus('error', 'Permission Denied');
+              showToast("Cloud read error: " + error.message, "error");
             });
-            usingFirebase = true;
-            setStatus('online');
           } else {
             currentUser = null;
             $('user-display-email').textContent = '';
