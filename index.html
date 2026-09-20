@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Daily Project Attendance & Schedule</title>
-
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
-  <!-- Firebase Compat Scripts (v10) -->
+  <!-- Firebase Scripts (Compat v10) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -29,7 +29,7 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
-
+    
     body {
       min-height: 100vh;
       background: radial-gradient(circle at top, #16223a 0%, #0b1120 100%);
@@ -39,6 +39,7 @@
     button, input { font: inherit; outline: none; }
     button { cursor: pointer; transition: all 0.2s ease; }
 
+    /* Main Layout */
     .layout {
       width: min(1360px, calc(100% - 48px));
       margin: 0 auto; padding: 40px 0 80px; display: flex; flex-direction: column; gap: 32px;
@@ -50,10 +51,11 @@
     }
     .header-left h1 { font-size: 28px; letter-spacing: -0.02em; margin-bottom: 4px; }
     .header-left p { color: var(--muted); font-size: 14px; }
-
+    
     .header-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     .user-profile { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
 
+    /* Status Badges */
     .status-badge {
       display: inline-flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace;
       font-size: 12px; padding: 6px 14px; border-radius: 99px; border: 1px solid var(--border);
@@ -70,17 +72,19 @@
       border: 1px solid rgba(245,158,11,.2); color: var(--warning); font-size: 13px; font-weight: 600;
     }
 
+    /* Standard Buttons */
     .btn-main, .btn-secondary, .btn-danger {
       border-radius: 10px; padding: 9px 18px; border: 1px solid transparent;
       font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center;
     }
     .btn-main { background: var(--accent); color: #fff; }
-    .btn-main:hover { background: var(--accent-hover); box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+    .btn-main:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
     .btn-secondary { background: rgba(255,255,255,.05); color: var(--text); border-color: var(--border); }
     .btn-secondary:hover { background: rgba(255,255,255,.1); }
     .btn-danger { background: rgba(239,68,68,.1); color: var(--danger); border-color: rgba(239,68,68,.2); }
     .btn-danger:hover { background: rgba(239,68,68,.2); }
 
+    /* Global Timers */
     .global-timers {
       display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px;
       background: var(--surface); border: 1px solid var(--border);
@@ -98,9 +102,10 @@
     .timer-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
     .timer-value { font-family: 'IBM Plex Mono', monospace; font-size: 32px; font-weight: 700; color: var(--text); }
 
+    /* Main Grid */
     .main-grid { display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: start; }
     .stack { display: flex; flex-direction: column; gap: 32px; }
-
+    
     .card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 20px; padding: 26px; box-shadow: 0 10px 30px -10px rgba(0,0,0,.2);
@@ -108,6 +113,7 @@
     .card-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
     .card-header h2 { font-size: 18px; font-weight: 600; }
 
+    /* Calendar Grid */
     .calendar-controls { display: flex; gap: 8px; }
     .calendar-controls button {
       width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
@@ -117,7 +123,7 @@
     .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
     .calendar-weekdays { margin-bottom: 12px; }
     .calendar-weekdays div { text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; }
-
+    
     .cal-cell {
       aspect-ratio: 1; border: 1px solid var(--border); border-radius: 8px; padding: 6px;
       position: relative; background: rgba(0,0,0,.2); font-size: 13px; display: flex; flex-direction: column; justify-content: space-between;
@@ -125,7 +131,7 @@
     .cal-cell.empty { border-color: transparent; background: transparent; }
     .cal-cell.today { border-color: var(--accent); background: rgba(59,130,246,.15); }
     .cal-cell.all-done { border-color: rgba(16,185,129,.5); background: rgba(16,185,129,.1); }
-
+    
     .status-dot-sub { width: 6px; height: 6px; border-radius: 50%; align-self: flex-end; margin-top: auto; }
     .dot-rem { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
     .dot-done { background: var(--success); box-shadow: 0 0 6px var(--success); }
@@ -134,6 +140,7 @@
       font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 4px;
     }
 
+    /* Charts */
     .chart-container { display: flex; flex-direction: column; gap: 16px; }
     .chart-row { display: grid; grid-template-columns: 100px 1fr 65px; align-items: center; gap: 16px; }
     .chart-label { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -142,7 +149,8 @@
     .chart-time { text-align: right; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
     .chart-summary { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); text-align: right; color: var(--muted); font-size: 13px; }
 
-    .project-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+    /* Project Cards */
+    .project-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
     .project-item {
       padding: 22px; border-radius: 16px; background: rgba(0,0,0,.25); border: 1px solid var(--border);
       display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease;
@@ -150,29 +158,33 @@
     .project-item:hover { border-color: rgba(255,255,255,.15); }
     .project-item.done { border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.05); }
     .project-item.active-item { border-color: var(--accent); background: rgba(59,130,246,.05); }
-
+    
     .project-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
     .project-info h4 { font-size: 15.5px; line-height: 1.4; margin-bottom: 6px; word-break: break-word; }
     .project-info span { font-size: 12.5px; color: var(--muted); }
     .project-timer { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600; color: var(--text); }
     .active-item .project-timer { color: var(--accent); }
-
-    .project-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    
+    .project-controls { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn-icon {
       flex: 1; min-height: 38px; border-radius: 8px; border: 1px solid var(--border);
       background: rgba(255,255,255,.05); color: var(--text); font-size: 12.5px; font-weight: 600;
       display: inline-flex; align-items: center; justify-content: center;
     }
-    .btn-icon:hover { background: rgba(255,255,255,.1); }
+    .btn-icon:hover:not(:disabled) { background: rgba(255,255,255,.1); }
+    .btn-icon:disabled { opacity: 0.35; cursor: not-allowed; }
     .btn-icon.play { color: #34d399; border-color: rgba(52,211,153,0.3); }
     .btn-icon.pause { color: #fbbf24; border-color: rgba(251,191,36,0.3); }
-
-    .completed-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; }
+    .btn-icon.delete { color: var(--danger); border-color: rgba(239,68,68,0.25); flex: 0 0 40px; }
+    .btn-icon.delete:hover { background: rgba(239,68,68,0.15); }
+    
+    .completed-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; gap: 8px; }
     .completed-label { color: #34d399; font-size: 13.5px; font-weight: 600; }
     .completed-row .undo { flex: none; padding: 6px 14px; min-height: 32px; font-size: 12px; }
-
+    
     .empty-state { grid-column: 1/-1; padding: 48px 20px; text-align: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: 16px; }
 
+    /* Modals */
     .modal-overlay {
       display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.75);
       backdrop-filter: blur(6px); align-items: center; justify-content: center; padding: 20px;
@@ -193,6 +205,7 @@
     .modal-help { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; }
 
+    /* Toast */
     #toast {
       position: fixed; right: 24px; bottom: 24px; z-index: 300; max-width: 400px; padding: 14px 20px;
       border-radius: 12px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,.5);
@@ -235,6 +248,7 @@
     </div>
   </header>
 
+  <!-- Sticky Global Timers -->
   <div class="global-timers">
     <div class="timer-block">
       <span class="timer-label">Overall Time Remaining</span>
@@ -248,6 +262,7 @@
 
   <div class="main-grid">
     <div class="stack">
+      <!-- Calendar Card -->
       <div class="card">
         <div class="card-header">
           <h2 id="calendar-month-year">Calendar</h2>
@@ -262,6 +277,7 @@
         <div id="calendar-grid" class="calendar-grid"></div>
       </div>
       
+      <!-- Chart Progress Card -->
       <div class="card">
         <div class="card-header">
           <h2>Today's Progress</h2>
@@ -271,6 +287,7 @@
       </div>
     </div>
 
+    <!-- Active Projects List -->
     <div class="card">
       <div class="card-header">
         <h2>Active Projects</h2>
@@ -353,6 +370,7 @@
 
   let appData = {
     projects: {},
+    archivedProjects: {}, // Holds deleted project metadata permanently for analytics
     dailyLogs: {}
   };
 
@@ -404,6 +422,7 @@
     }
     if (!appData || typeof appData !== 'object') appData = {};
     if (!appData.projects) appData.projects = {};
+    if (!appData.archivedProjects) appData.archivedProjects = {};
     if (!appData.dailyLogs) appData.dailyLogs = {};
   }
 
@@ -423,7 +442,7 @@
   }
 
   /* =========================================================================
-     GLOBAL WINDOW ATTACHMENTS (Direct Function Bindings)
+     GLOBAL WINDOW ATTACHMENTS
   ========================================================================= */
   window.openAddModal = function() {
     const modal = $('schedule-modal');
@@ -530,18 +549,44 @@
     renderUI();
   };
 
+  // Delete project from visible dashboard while permanently preserving for analytics
+  window.deleteProject = function(id) {
+    const p = appData.projects[id];
+    if (!p) return;
+
+    if (!confirm(`Are you sure you want to remove "${p.name}"? Active project cards will be removed, but all historical time will be retained in your analytics export.`)) {
+      return;
+    }
+
+    // Stop timer if actively running
+    if (activeProjectId === id) {
+      window.handlePause(id);
+    }
+
+    // Move to archived metadata dictionary
+    if (!appData.archivedProjects) appData.archivedProjects = {};
+    appData.archivedProjects[id] = {
+      ...p,
+      deletedAt: Date.now()
+    };
+
+    // Remove from active visible projects list
+    delete appData.projects[id];
+
+    persist();
+    showToast(`Project removed. Historical data preserved in Analytics.`);
+    determineActive();
+    renderUI();
+  };
+
   window.handleStart = function(id) {
     const today = todayKey();
     if (!appData.dailyLogs[today]) appData.dailyLogs[today] = {};
 
+    // Rule: No other project can start if another is currently running
     if (activeProjectId && activeProjectId !== id) {
-      const targetDate = activeProjectDate || today;
-      const oldLog = appData.dailyLogs[targetDate] ? appData.dailyLogs[targetDate][activeProjectId] : null;
-      if (oldLog) {
-        oldLog.elapsedSeconds = elapsedNow(oldLog);
-        oldLog.timerRunning = false;
-        oldLog.lastStartedAt = null;
-      }
+      showToast('Another project is currently active. Pause or finish it first.', 'error');
+      return;
     }
 
     if (!appData.dailyLogs[today][id]) {
@@ -581,7 +626,13 @@
   };
 
   window.handleDone = function(id) {
-    const targetDate = (id === activeProjectId && activeProjectDate) ? activeProjectDate : todayKey();
+    // Rule: Done button can only be fired on the actively running project
+    if (activeProjectId !== id) {
+      showToast('Only the currently active project can be marked done.', 'error');
+      return;
+    }
+
+    const targetDate = activeProjectDate || todayKey();
     if (!appData.dailyLogs[targetDate]) appData.dailyLogs[targetDate] = {};
     if (!appData.dailyLogs[targetDate][id]) {
       appData.dailyLogs[targetDate][id] = { elapsedSeconds: 0 };
@@ -594,12 +645,10 @@
     log.completed = true;
     log.completedAt = Date.now();
 
-    if (activeProjectId === id) {
-      activeProjectId = null;
-      activeProjectDate = null;
-      const block = $('active-timer-block');
-      if (block) block.classList.remove('active');
-    }
+    activeProjectId = null;
+    activeProjectDate = null;
+    const block = $('active-timer-block');
+    if (block) block.classList.remove('active');
 
     persist();
     renderUI();
@@ -622,7 +671,7 @@
 
   window.signIn = function() {
     if (typeof firebase === 'undefined' || !firebase.auth) {
-      showToast('Firebase library not initialized', 'error');
+      showToast('Firebase library not loaded', 'error');
       return;
     }
     const provider = new firebase.auth.GoogleAuthProvider();
@@ -637,20 +686,26 @@
     }
   };
 
+  // Analytics Export retains ALL projects (Active + Deleted/Archived)
   window.exportAnalytics = function() {
     if (!appData.dailyLogs || !Object.keys(appData.dailyLogs).length) {
       showToast('No logged data available for export.', 'error');
       return;
     }
-    let csv = 'Date,Project Name,Target Minutes,Logged Time (HH:MM:SS),Status\n';
+    let csv = 'Date,Project Name,Target Minutes,Logged Time (HH:MM:SS),Status,Project Status\n';
 
     Object.keys(appData.dailyLogs).sort().forEach(function(date) {
       Object.keys(appData.dailyLogs[date] || {}).forEach(function(id) {
-        const p = appData.projects[id];
+        const activeProj = appData.projects[id];
+        const archivedProj = appData.archivedProjects ? appData.archivedProjects[id] : null;
+        const p = activeProj || archivedProj;
+
         const l = appData.dailyLogs[date][id] || {};
-        const name = p ? p.name : 'Archived/Unknown Project';
+        const name = p ? p.name : 'Unknown Requirement';
         const target = p ? Math.round(targetMinutes(p)) : 'N/A';
-        csv += '"' + date + '","' + String(name).replace(/"/g, '""') + '","' + target + '","' + formatTime(l.elapsedSeconds || 0) + '","' + (l.completed ? 'Completed' : 'Incomplete') + '"\n';
+        const projStatus = activeProj ? 'Active' : 'Archived / Deleted';
+
+        csv += '"' + date + '","' + String(name).replace(/"/g, '""') + '","' + target + '","' + formatTime(l.elapsedSeconds || 0) + '","' + (l.completed ? 'Completed' : 'Incomplete') + '","' + projStatus + '"\n';
       });
     });
 
@@ -686,7 +741,9 @@
     for (let i = 0; i < 2; i++) {
       const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
       const logs = appData.dailyLogs[k] || {};
-      const foundId = Object.keys(logs).find(function(id) { return logs[id] && logs[id].timerRunning; });
+      const foundId = Object.keys(logs).find(function(id) { 
+        return logs[id] && logs[id].timerRunning && appData.projects[id]; 
+      });
       if (foundId) {
         activeProjectId = foundId;
         activeProjectDate = k;
@@ -767,13 +824,12 @@
       $('global-active-title').textContent = 'Active: ' + p.name;
       $('global-active-timer').textContent = formatTime(rem);
     } else {
-      $('global-active-title').textContent = 'No Active Project';
-      $('global-active-timer').textContent = '00:00:00';
+      $('global-active-title').textContent = 'No Active Project';$('global-active-timer').textContent = '00:00:00';
     }
   }
 
   /* =========================================================================
-     RENDERING MODULES
+     RENDERING ROUTINES
   ========================================================================= */
   function renderUI() {
     renderProjectList();
@@ -795,6 +851,8 @@
       return;
     }
 
+    const hasRunningProject = Boolean(activeProjectId);
+
     ids.forEach(function(id) {
       const p = appData.projects[id];
       const log = logs[id] || {};
@@ -810,14 +868,19 @@
         ctrlHtml = '<div class="completed-row">' +
                      '<span class="completed-label">✓ Completed</span>' +
                      '<button class="btn-icon undo" onclick="handleUndoDone(\'' + id + '\')">↺ Undo</button>' +
+                     '<button class="btn-icon delete" title="Delete Project" onclick="deleteProject(\'' + id + '\')">🗑</button>' +
                    '</div>';
       } else {
+        // Condition: Start is disabled if another project is running
+        const startDisabled = hasRunningProject && !isActive;
+
         ctrlHtml = '<div class="project-controls">' +
                      '<button class="btn-icon" onclick="openEditModal(\'' + id + '\')">✎ Edit</button>' +
                      (isActive 
-                       ? '<button class="btn-icon pause" onclick="handlePause(\'' + id + '\')">⏸ Pause</button>' 
-                       : '<button class="btn-icon play" onclick="handleStart(\'' + id + '\')">▶ Start</button>') +
-                     '<button class="btn-icon done" onclick="handleDone(\'' + id + '\')">✓ Done</button>' +
+                       ? '<button class="btn-icon pause" onclick="handlePause(\'' + id + '\')">⏸ Pause</button>' +
+                         '<button class="btn-icon done" onclick="handleDone(\'' + id + '\')">✓ Done</button>'
+                       : '<button class="btn-icon play" ' + (startDisabled ? 'disabled title="Pause the active project to start this one"' : '') + ' onclick="handleStart(\'' + id + '\')">▶ Start</button>') +
+                     '<button class="btn-icon delete" title="Delete Project" onclick="deleteProject(\'' + id + '\')">🗑</button>' +
                    '</div>';
       }
 
@@ -958,8 +1021,7 @@
           if (user) {
             currentUser = user;
             $('user-display-email').textContent = user.email || '';
-            $('btn-login').style.display = 'none';
-            $('btn-logout').style.display = 'inline-flex';
+            $('btn-login').style.display = 'none';$('btn-logout').style.display = 'inline-flex';
 
             userRef = firebase.database().ref('users/' + user.uid);
             userRef.on('value', function(snap) {
@@ -967,6 +1029,7 @@
               if (val) {
                 appData = val;
                 if (!appData.projects) appData.projects = {};
+                if (!appData.archivedProjects) appData.archivedProjects = {};
                 if (!appData.dailyLogs) appData.dailyLogs = {};
                 localStorage.setItem('daily_ops_data', JSON.stringify(appData));
                 determineActive();
@@ -978,8 +1041,7 @@
           } else {
             currentUser = null;
             $('user-display-email').textContent = '';
-            $('btn-login').style.display = 'inline-flex';
-            $('btn-logout').style.display = 'none';
+            $('btn-login').style.display = 'inline-flex';$('btn-logout').style.display = 'none';
             usingFirebase = false;
             setStatus('local');
           }
