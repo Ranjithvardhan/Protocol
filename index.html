@@ -42,7 +42,7 @@
     /* Main Layout */
     .layout {
       width: min(1360px, calc(100% - 48px));
-      margin: 0 auto; padding: 40px 0 80px; display: flex; flex-direction: column; gap: 32px;
+      margin: 0 auto; padding: 40px 0 80px; display: flex; flex-direction: column; gap: 28px;
     }
 
     header {
@@ -54,6 +54,30 @@
     
     .header-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     .user-profile { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
+
+    /* Wake-Up Banner Bar */
+    .wakeup-banner {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .wakeup-info { display: flex; align-items: center; gap: 12px; font-size: 13.5px; }
+    .wakeup-tag { font-weight: 700; color: var(--warning); font-family: 'IBM Plex Mono', monospace; }
+    .wakeup-controls { display: flex; align-items: center; gap: 10px; }
+    .wakeup-controls input[type="time"] {
+      background: rgba(0,0,0,0.3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
 
     /* Status Badges */
     .status-badge {
@@ -72,28 +96,29 @@
       border: 1px solid rgba(245,158,11,.2); color: var(--warning); font-size: 13px; font-weight: 600;
     }
 
-    /* Standard Buttons */
+    /* Buttons */
     .btn-main, .btn-secondary, .btn-danger {
       border-radius: 10px; padding: 9px 18px; border: 1px solid transparent;
       font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center;
     }
     .btn-main { background: var(--accent); color: #fff; }
     .btn-main:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+    .btn-main:disabled { opacity: 0.35; cursor: not-allowed; }
     .btn-secondary { background: rgba(255,255,255,.05); color: var(--text); border-color: var(--border); }
     .btn-secondary:hover { background: rgba(255,255,255,.1); }
     .btn-danger { background: rgba(239,68,68,.1); color: var(--danger); border-color: rgba(239,68,68,.2); }
     .btn-danger:hover { background: rgba(239,68,68,.2); }
 
-    /* Global Timers (Updated to 3 columns) */
+    /* Global Timers */
     .global-timers {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 24px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 20px; box-shadow: 0 20px 40px -10px rgba(0,0,0,.3); position: sticky; top: 24px; z-index: 40;
     }
     .timer-block {
-      min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 105px; display: flex; flex-direction: column; align-items: center; justify-content: center;
       border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid var(--border); padding: 16px;
-      transition: all 0.3s ease;
+      transition: all 0.3s ease; text-align: center;
     }
     .timer-block.active {
       border-color: rgba(59,130,246,.5); background: rgba(59,130,246,.1);
@@ -223,6 +248,7 @@
       .global-timers { position: static; }
       .chart-row { grid-template-columns: 85px 1fr 55px; }
       .card { padding: 20px; }
+      .wakeup-banner { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
@@ -249,19 +275,31 @@
     </div>
   </header>
 
-  <!-- Global Timers (Holistic + Active Project + 10 PM Margin Timer) -->
+  <!-- Wake-up Log Banner -->
+  <div class="wakeup-banner">
+    <div class="wakeup-info">
+      <span class="wakeup-tag">🌅 WAKE-UP STATUS:</span>
+      <span id="wakeup-status-text">Not registered today. Tasks locked until wake time is logged.</span>
+    </div>
+    <div class="wakeup-controls">
+      <input type="time" id="wakeup-time-input" />
+      <button class="btn-main" onclick="registerWakeupTime()">Set Wake Time</button>
+    </div>
+  </div>
+
+  <!-- Global Timers Array: 1) Holistic Work 2) Active Project 3) Leisure & Mundane Tasks -->
   <div class="global-timers">
     <div class="timer-block">
-      <span class="timer-label">Overall Time Remaining</span>
+      <span class="timer-label">Overall Scheduled Work</span>
       <div id="global-total-timer" class="timer-value">00:00:00</div>
     </div>
     <div id="active-timer-block" class="timer-block">
       <span id="global-active-title" class="timer-label">No Active Project</span>
       <div id="global-active-timer" class="timer-value">00:00:00</div>
     </div>
-    <div id="margin-timer-block" class="timer-block">
-      <span id="margin-timer-title" class="timer-label">Buffer to 10:00 PM</span>
-      <div id="margin-timer-value" class="timer-value">00:00:00</div>
+    <div id="leisure-timer-block" class="timer-block">
+      <span id="leisure-timer-title" class="timer-label">Leisure & Chores Pool</span>
+      <div id="leisure-timer-value" class="timer-value">00:00:00</div>
     </div>
   </div>
 
@@ -356,7 +394,7 @@
 
 <script>
   /* =========================================================================
-     CORE STATE & CONFIGURATION
+     CORE CONFIGURATION & PERSISTENCE
   ========================================================================= */
   const firebaseConfig = {
     apiKey: "AIzaSyBtO6wiJLk-9zjtvA7EJC6bJ1AEGcb6_VU",
@@ -376,7 +414,8 @@
   let appData = {
     projects: {},
     archivedProjects: {},
-    dailyLogs: {}
+    dailyLogs: {},
+    wakeups: {} // Format: { "YYYY-MM-DD": { time: "HH:MM", timestamp: 123456789 } }
   };
 
   let currentCalDate = new Date();
@@ -429,6 +468,7 @@
     if (!appData.projects) appData.projects = {};
     if (!appData.archivedProjects) appData.archivedProjects = {};
     if (!appData.dailyLogs) appData.dailyLogs = {};
+    if (!appData.wakeups) appData.wakeups = {};
   }
 
   function persist() {
@@ -449,7 +489,35 @@
   /* =========================================================================
      GLOBAL WINDOW ATTACHMENTS
   ========================================================================= */
+  window.registerWakeupTime = function() {
+    const inp = $('wakeup-time-input');
+    if (!inp || !inp.value) {
+      showToast('Please manually enter your wake-up time first.', 'error');
+      return;
+    }
+    const today = todayKey();
+    const parts = inp.value.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+
+    const wakeDate = new Date();
+    wakeDate.setHours(h, m, 0, 0);
+
+    appData.wakeups[today] = {
+      time: inp.value,
+      timestamp: wakeDate.getTime()
+    };
+
+    persist();
+    showToast('Wake-up time registered: ' + inp.value);
+    renderUI();
+  };
+
   window.openAddModal = function() {
+    if (!isWakeupLoggedToday()) {
+      showToast('You must set your wake-up time first.', 'error');
+      return;
+    }
     const modal = $('schedule-modal');
     if (modal) modal.classList.add('active');
     const inp = $('project-name');
@@ -581,11 +649,16 @@
   };
 
   window.handleStart = function(id) {
+    if (!isWakeupLoggedToday()) {
+      showToast('You must register your wake-up time before starting projects.', 'error');
+      return;
+    }
+
     const today = todayKey();
     if (!appData.dailyLogs[today]) appData.dailyLogs[today] = {};
 
     if (activeProjectId && activeProjectId !== id) {
-      showToast('Another project is currently active. Pause or finish it first.', 'error');
+      showToast('Another project is already active. Pause or finish it first.', 'error');
       return;
     }
 
@@ -690,9 +763,10 @@
       showToast('No logged data available for export.', 'error');
       return;
     }
-    let csv = 'Date,Project Name,Target Minutes,Logged Time (HH:MM:SS),Status,Project Status\n';
+    let csv = 'Date,Wakeup Time,Project Name,Target Minutes,Logged Time (HH:MM:SS),Status,Project Status\n';
 
     Object.keys(appData.dailyLogs).sort().forEach(function(date) {
+      const wakeStr = (appData.wakeups && appData.wakeups[date]) ? appData.wakeups[date].time : 'N/A';
       Object.keys(appData.dailyLogs[date] || {}).forEach(function(id) {
         const activeProj = appData.projects[id];
         const archivedProj = appData.archivedProjects ? appData.archivedProjects[id] : null;
@@ -703,7 +777,7 @@
         const target = p ? Math.round(targetMinutes(p)) : 'N/A';
         const projStatus = activeProj ? 'Active' : 'Archived / Deleted';
 
-        csv += '"' + date + '","' + String(name).replace(/"/g, '""') + '","' + target + '","' + formatTime(l.elapsedSeconds || 0) + '","' + (l.completed ? 'Completed' : 'Incomplete') + '","' + projStatus + '"\n';
+        csv += '"' + date + '","' + wakeStr + '","' + String(name).replace(/"/g, '""') + '","' + target + '","' + formatTime(l.elapsedSeconds || 0) + '","' + (l.completed ? 'Completed' : 'Incomplete') + '","' + projStatus + '"\n';
       });
     });
 
@@ -716,8 +790,13 @@
   };
 
   /* =========================================================================
-     TIMERS, CLOCKS & 10:00 PM BUFFER CALCULATION
+     TIMERS, CLOCKS & LEISURE CALCULATION ENGINE
   ========================================================================= */
+  function isWakeupLoggedToday() {
+    const today = todayKey();
+    return Boolean(appData.wakeups && appData.wakeups[today] && appData.wakeups[today].timestamp);
+  }
+
   function targetMinutes(p) {
     if (!p) return 0;
     if (Number.isFinite(Number(p.targetMinutes))) return Number(p.targetMinutes);
@@ -826,45 +905,76 @@
       $('global-active-title').textContent = 'No Active Project';$('global-active-timer').textContent = '00:00:00';
     }
 
-    // --- NEW: 10:00 PM Buffer / Deadline Margin Calculation ---
-    const now = new Date();
-    const target10PM = new Date();
-    target10PM.setHours(22, 0, 0, 0); // 10:00 PM today
+    // --- LEISURE & CHORES POOL (UNTIL 10:00 PM) ---
+    const leisureValEl = $('leisure-timer-value');
+    const leisureTitleEl = $('leisure-timer-title');
 
-    const secsUntil10PM = Math.floor((target10PM.getTime() - now.getTime()) / 1000);
-    const bufferSecs = secsUntil10PM - totalRemSecs;
-
-    const marginTimerVal = $('margin-timer-value');
-    const marginTimerTitle = $('margin-timer-title');
-
-    if (marginTimerVal && marginTimerTitle) {
-      marginTimerVal.textContent = formatTime(bufferSecs);
-
-      if (bufferSecs < 0) {
-        // Not enough time left to finish before 10 PM
-        marginTimerVal.style.color = '#ef4444'; // Red
-        marginTimerTitle.textContent = 'Deficit to 10:00 PM';
-      } else if (bufferSecs <= 3600) {
-        // Less than 1 hour of buffer remaining
-        marginTimerVal.style.color = '#f59e0b'; // Yellow
-        marginTimerTitle.textContent = 'Buffer to 10 PM (< 1h)';
+    if (leisureValEl && leisureTitleEl) {
+      if (!isWakeupLoggedToday()) {
+        leisureValEl.textContent = "--:--:--";
+        leisureValEl.style.color = "var(--muted)";
+        leisureTitleEl.textContent = "Log Wake-up Time First";
       } else {
-        // Safe buffer (> 1 hour)
-        marginTimerVal.style.color = '#10b981'; // Green
-        marginTimerTitle.textContent = 'Buffer to 10:00 PM';
+        const now = new Date();
+        const target10PM = new Date();
+        target10PM.setHours(22, 0, 0, 0); // 10:00 PM cutoff
+
+        // Remaining seconds until 10 PM
+        const secsUntil10PM = Math.floor((target10PM.getTime() - now.getTime()) / 1000);
+        
+        // Leisure Pool = Available time to 10PM minus all remaining scheduled work
+        const leisurePoolSecs = secsUntil10PM - totalRemSecs;
+        leisureValEl.textContent = formatTime(leisurePoolSecs);
+
+        if (leisurePoolSecs < 0) {
+          leisureValEl.style.color = '#ef4444'; // Red (Deficit)
+          leisureTitleEl.textContent = 'Leisure Deficit (Overtime)';
+        } else if (leisurePoolSecs <= 3600) {
+          leisureValEl.style.color = '#f59e0b'; // Yellow (<= 1 hr)
+          leisureTitleEl.textContent = 'Leisure & Chores (< 1h)';
+        } else {
+          leisureValEl.style.color = '#10b981'; // Green (> 1 hr)
+          leisureTitleEl.textContent = 'Leisure & Chores Pool';
+        }
       }
     }
   }
 
   /* =========================================================================
-     RENDERING ROUTINES
+     RENDERING MODULES
   ========================================================================= */
   function renderUI() {
+    renderWakeupBanner();
     renderProjectList();
     renderChart();
     renderCalendar();
     renderStreak();
     updateClocks();
+  }
+
+  function renderWakeupBanner() {
+    const today = todayKey();
+    const statusText = $('wakeup-status-text');
+    const inp = $('wakeup-time-input');
+    const hasLogged = isWakeupLoggedToday();
+
+    if (hasLogged) {
+      const logged = appData.wakeups[today];
+      statusText.innerHTML = `Registered at <strong style="color:var(--text)">${logged.time}</strong>. Operating day active until 10:00 PM.`;
+      if (inp) inp.value = logged.time;
+    } else {
+      statusText.innerHTML = `Not registered today. <span style="color:var(--danger)">All task timers locked</span> until wake-up time is logged.`;
+      // Leaves input blank so you manually select the time
+      if (inp && !inp.value) {
+        inp.value = '';
+      }
+    }
+
+    const addBtn = $('btn-open-add');
+    if (addBtn) {
+      addBtn.disabled = !hasLogged;
+      addBtn.title = hasLogged ? "" : "Log wake-up time to unlock";
+    }
   }
 
   function renderProjectList() {
@@ -880,6 +990,7 @@
     }
 
     const hasRunningProject = Boolean(activeProjectId);
+    const isUnlocked = isWakeupLoggedToday();
 
     ids.forEach(function(id) {
       const p = appData.projects[id];
@@ -899,14 +1010,14 @@
                      '<button class="btn-icon delete" title="Delete Project" onclick="deleteProject(\'' + id + '\')">🗑</button>' +
                    '</div>';
       } else {
-        const startDisabled = hasRunningProject && !isActive;
+        const startDisabled = !isUnlocked || (hasRunningProject && !isActive);
 
         ctrlHtml = '<div class="project-controls">' +
                      '<button class="btn-icon" onclick="openEditModal(\'' + id + '\')">✎ Edit</button>' +
                      (isActive 
                        ? '<button class="btn-icon pause" onclick="handlePause(\'' + id + '\')">⏸ Pause</button>' +
                          '<button class="btn-icon done" onclick="handleDone(\'' + id + '\')">✓ Done</button>'
-                       : '<button class="btn-icon play" ' + (startDisabled ? 'disabled title="Pause the active project to start this one"' : '') + ' onclick="handleStart(\'' + id + '\')">▶ Start</button>') +
+                       : '<button class="btn-icon play" ' + (startDisabled ? 'disabled title="' + (!isUnlocked ? 'Log wake-up time first' : 'Pause active project first') + '"' : '') + ' onclick="handleStart(\'' + id + '\')">▶ Start</button>') +
                      '<button class="btn-icon delete" title="Delete Project" onclick="deleteProject(\'' + id + '\')">🗑</button>' +
                    '</div>';
       }
@@ -1015,7 +1126,7 @@
   }
 
   /* =========================================================================
-     APPLICATION INITIALIZATION
+     APPLICATION BOOTSTRAPPER
   ========================================================================= */
   function initApp() {
     const dateEl = $('current-date-display');
@@ -1056,6 +1167,7 @@
                 if (!appData.projects) appData.projects = {};
                 if (!appData.archivedProjects) appData.archivedProjects = {};
                 if (!appData.dailyLogs) appData.dailyLogs = {};
+                if (!appData.wakeups) appData.wakeups = {};
                 localStorage.setItem('daily_ops_data', JSON.stringify(appData));
                 determineActive();
                 renderUI();
