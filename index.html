@@ -236,12 +236,12 @@
         <span class="status-dot"></span>
         <span id="statusText">Local Storage Mode</span>
       </span>
-      <button class="btn-secondary" id="btn-export">📊 Export Analytics</button>
+      <button class="btn-secondary" id="btn-export" onclick="exportAnalytics()">📊 Export Analytics</button>
       <div id="streak-counter" class="streak-badge">0 Day Streak</div>
       <div class="user-profile">
         <span id="user-display-email"></span>
-        <button id="btn-login" class="btn-secondary">Sign in (Optional)</button>
-        <button id="btn-logout" class="btn-danger" style="display:none;">Sign Out</button>
+        <button id="btn-login" class="btn-secondary" onclick="signIn()">Sign in (Optional)</button>
+        <button id="btn-logout" class="btn-danger" style="display:none;" onclick="signOut()">Sign Out</button>
       </div>
     </div>
   </header>
@@ -265,8 +265,8 @@
         <div class="card-header">
           <h2 id="calendar-month-year">Calendar</h2>
           <div class="calendar-controls">
-            <button id="btn-prev-month">←</button>
-            <button id="btn-next-month">→</button>
+            <button id="btn-prev-month" onclick="changeMonth(-1)">←</button>
+            <button id="btn-next-month" onclick="changeMonth(1)">→</button>
           </div>
         </div>
         <div class="calendar-weekdays">
@@ -289,7 +289,7 @@
     <div class="card">
       <div class="card-header">
         <h2>Active Projects</h2>
-        <button class="btn-main" id="btn-open-add">+ Add Project</button>
+        <button class="btn-main" id="btn-open-add" onclick="openAddModal()">+ Add Project</button>
       </div>
       <ul id="project-list" class="project-list"></ul>
     </div>
@@ -300,7 +300,7 @@
 <div id="schedule-modal" class="modal-overlay">
   <div class="modal">
     <h3>Add New Requirement</h3>
-    <form id="project-form">
+    <form id="project-form" onsubmit="saveNewProject(event)">
       <div class="modal-group">
         <label for="project-name">Project Name / Subject</label>
         <input type="text" id="project-name" placeholder="e.g., Finite Element Analysis" required autocomplete="off">
@@ -311,7 +311,7 @@
         <div class="modal-help">Total focused effort required today.</div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="btn-cancel-add">Cancel</button>
+        <button type="button" class="btn-secondary" id="btn-cancel-add" onclick="closeModal('schedule-modal')">Cancel</button>
         <button type="submit" id="save-project-btn" class="btn-main">Save Project</button>
       </div>
     </form>
@@ -322,7 +322,7 @@
 <div id="edit-modal" class="modal-overlay">
   <div class="modal">
     <h3>Edit Project</h3>
-    <form id="edit-form">
+    <form id="edit-form" onsubmit="updateProjectDetails(event)">
       <input type="hidden" id="edit-project-id">
       <div class="modal-group">
         <label for="edit-project-name">Project Name</label>
@@ -338,7 +338,7 @@
         <div class="modal-help">Manually adjust elapsed minutes logged today.</div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="btn-cancel-edit">Cancel</button>
+        <button type="button" class="btn-secondary" id="btn-cancel-edit" onclick="closeModal('edit-modal')">Cancel</button>
         <button type="submit" class="btn-main">Update Project</button>
       </div>
     </form>
@@ -349,7 +349,7 @@
 
 <script>
   /* =========================================================================
-     HYBRID STORAGE ENGINE
+     GLOBAL VARIABLE INITIALIZATION
   ========================================================================= */
   const firebaseConfig = {
     apiKey: "AIzaSyBtO6wiJLk-9zjtvA7EJC6bJ1AEGcb6_VU",
@@ -377,18 +377,18 @@
   let displayInterval = null;
   const colors = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316'];
 
-  const $ = id => document.getElementById(id);
+  const $ = function(id) { return document.getElementById(id); };
 
   function todayKey() {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
   function setStatus(mode) {
     const badge = $('statusBadge');
     const text = $('statusText');
     if (!badge || !text) return;
-    badge.classList.remove('online','local');
+    badge.classList.remove('online', 'local');
     if (mode === 'online') {
       badge.classList.add('online');
       text.textContent = 'Cloud Connected';
@@ -398,26 +398,36 @@
     }
   }
 
-  function showToast(msg, type = 'success') {
+  function showToast(msg, type) {
+    type = type || 'success';
     const t = $('toast');
     if (!t) return;
     t.textContent = msg;
-    t.className = `toast-show toast-${type}`;
+    t.className = 'toast-show toast-' + type;
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => { t.className = ''; }, 3500);
+    showToast.timer = setTimeout(function() { t.className = ''; }, 3500);
   }
 
   function loadFromLocalStorage() {
-    const raw = localStorage.getItem('daily_ops_data');
-    if (raw) {
-      try { appData = JSON.parse(raw); } catch(e) { console.error(e); }
+    try {
+      const raw = localStorage.getItem('daily_ops_data');
+      if (raw) {
+        appData = JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error(e);
     }
+    if (!appData || typeof appData !== 'object') appData = {};
     if (!appData.projects) appData.projects = {};
     if (!appData.dailyLogs) appData.dailyLogs = {};
   }
 
   function persist() {
-    localStorage.setItem('daily_ops_data', JSON.stringify(appData));
+    try {
+      localStorage.setItem('daily_ops_data', JSON.stringify(appData));
+    } catch (e) {
+      console.error(e);
+    }
     if (usingFirebase && userRef && currentUser) {
       try {
         userRef.set(appData);
@@ -427,309 +437,37 @@
     }
   }
 
-  function initApp() {
-    // 1. Initial UI setup
-    $('current-date-display').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    
-    // 2. Load stored data
-    loadFromLocalStorage();
-    determineActive();
-    renderUI();
-    startClock();
-
-    // 3. Attach standard event listeners directly in JS
-    $('btn-open-add').onclick = openAddModal;
-    $('btn-cancel-add').onclick = () => closeModal('schedule-modal');
-    $('btn-cancel-edit').onclick = () => closeModal('edit-modal');$('project-form').onsubmit = saveNewProject;
-    $('edit-form').onsubmit = updateProjectDetails;
-    $('btn-export').onclick = exportAnalytics;
-    $('btn-prev-month').onclick = () => changeMonth(-1);
-    $('btn-next-month').onclick = () => changeMonth(1);$('btn-login').onclick = signIn;
-    $('btn-logout').onclick = signOut;
-
-    // 4. Connect Firebase safely
-    try {
-      if (typeof firebase !== 'undefined') {
-        firebase.initializeApp(firebaseConfig);
-
-        firebase.database().ref('.info/connected').on('value', snap => {
-          if (snap.val() === true && currentUser) {
-            usingFirebase = true;
-            setStatus('online');
-          } else {
-            usingFirebase = false;
-            setStatus('local');
-          }
-        });
-
-        firebase.auth().onAuthStateChanged(user => {
-          if (user) {
-            currentUser = user;
-            $('user-display-email').textContent = user.email || '';
-            $('btn-login').style.display = 'none';$('btn-logout').style.display = 'inline-flex';
-
-            userRef = firebase.database().ref(`users/${user.uid}`);
-            userRef.on('value', snap => {
-              const val = snap.val();
-              if (val) {
-                appData = val;
-                if (!appData.projects) appData.projects = {};
-                if (!appData.dailyLogs) appData.dailyLogs = {};
-                localStorage.setItem('daily_ops_data', JSON.stringify(appData));
-                determineActive();
-                renderUI();
-              }
-            });
-            usingFirebase = true;
-            setStatus('online');
-          } else {
-            currentUser = null;
-            $('user-display-email').textContent = '';
-            $('btn-login').style.display = 'inline-flex';$('btn-logout').style.display = 'none';
-            usingFirebase = false;
-            setStatus('local');
-          }
-        });
-      }
-    } catch (e) {
-      console.warn("Operating in pure local storage mode:", e);
-      usingFirebase = false;
-      setStatus('local');
-    }
-  }
-
-  function signIn() {
-    if (typeof firebase === 'undefined') {
-      showToast('Firebase library not loaded', 'error');
-      return;
-    }
-    const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider).catch(err => {
-      showToast(err.message, 'error');
-    });
-  }
-
-  function signOut() {
-    if (typeof firebase !== 'undefined') {
-      firebase.auth().signOut();
-    }
-  }
-
   /* =========================================================================
-     OPERATIONAL TIMERS & MECHANICS
+     EXPLICIT GLOBAL ATTACHMENTS (Prevents Uncaught ReferenceErrors)
   ========================================================================= */
-  function targetMinutes(p) {
-    if (!p) return 0;
-    if (Number.isFinite(Number(p.targetMinutes))) return Number(p.targetMinutes);
-    if (Number.isFinite(Number(p.targetHours))) return Number(p.targetHours) * 60;
-    return 0;
-  }
+  window.openAddModal = function() {
+    const modal = $('schedule-modal');
+    if (modal) modal.classList.add('active');
+    const inp = $('project-name');
+    if (inp) inp.focus();
+  };
 
-  function elapsedNow(log) {
-    if (!log) return 0;
-    let e = Number(log.elapsedSeconds) || 0;
-    if (log.timerRunning && log.lastStartedAt) {
-      e += Math.max(0, Math.floor((Date.now() - Number(log.lastStartedAt)) / 1000));
-    }
-    return e;
-  }
+  window.closeModal = function(modalId) {
+    const modal = $(modalId);
+    if (modal) modal.classList.remove('active');
+  };
 
-  function determineActive() {
-    let d = new Date();
-    for (let i = 0; i < 2; i++) {
-      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      const logs = appData.dailyLogs[k] || {};
-      const foundId = Object.keys(logs).find(id => logs[id]?.timerRunning);
-      if (foundId) {
-        activeProjectId = foundId;
-        activeProjectDate = k;
-        const block = $('active-timer-block');
-        if (block) block.classList.add('active');
-        return;
-      }
-      d.setDate(d.getDate() - 1);
-    }
-    activeProjectId = null;
-    activeProjectDate = null;
-    const block = $('active-timer-block');
-    if (block) block.classList.remove('active');
-  }
+  window.saveNewProject = function(e) {
+    if (e && e.preventDefault) e.preventDefault();
 
-  function formatTime(sec) {
-    sec = Math.max(0, Math.floor(Number(sec) || 0));
-    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
+    const nameInp = $('project-name');
+    const minInp = $('project-minutes');
+    if (!nameInp || !minInp) return;
 
-  function humanMinutes(sec) {
-    sec = Math.max(0, Math.floor(Number(sec) || 0));
-    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-    return h ? `${h}h ${m}m` : `${m}m`;
-  }
-
-  function escapeHtml(str) {
-    return (str || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  }
-
-  function startClock() {
-    stopClock();
-    displayInterval = setInterval(updateClocks, 1000);
-  }
-
-  function stopClock() {
-    if (displayInterval) clearInterval(displayInterval);
-  }
-
-  function updateClocks() {
-    const today = todayKey();
-    const logs = appData.dailyLogs[today] || {};
-    let total = 0;
-
-    Object.keys(appData.projects).forEach(id => {
-      const p = appData.projects[id];
-      const log = logs[id] || {};
-      const targetSec = targetMinutes(p) * 60;
-      const elapsed = elapsedNow(log);
-      const isDone = !!log.completed;
-      const rem = isDone ? 0 : Math.max(0, targetSec - elapsed);
-      total += rem;
-
-      const fill = $(`chart-bar-${id}`);
-      const time = $(`chart-time-${id}`);
-      if (fill && time) {
-        fill.style.width = `${targetSec ? Math.min(100, (elapsed / targetSec) * 100) : 0}%`;
-        time.textContent = isDone ? 'Done' : humanMinutes(rem);
-      }
-
-      const listTimer = $(`list-timer-${id}`);
-      if (listTimer) listTimer.textContent = formatTime(rem);
-    });
-
-    $('global-total-timer').textContent = formatTime(total);$('chart-total-remaining').textContent = humanMinutes(total);
-
-    if (activeProjectId && appData.projects[activeProjectId]) {
-      const p = appData.projects[activeProjectId];
-      const targetDate = activeProjectDate || today;
-      const log = appData.dailyLogs[targetDate]?.[activeProjectId] || {};
-      const rem = Math.max(0, (targetMinutes(p) * 60) - elapsedNow(log));
-      $('global-active-title').textContent = `Active: ${p.name}`;
-      $('global-active-timer').textContent = formatTime(rem);
-    } else {
-      $('global-active-title').textContent = 'No Active Project';$('global-active-timer').textContent = '00:00:00';
-    }
-  }
-
-  /* =========================================================================
-     PROJECT CONTROLS
-  ========================================================================= */
-  function handleStart(id) {
-    const today = todayKey();
-    if (!appData.dailyLogs[today]) appData.dailyLogs[today] = {};
-
-    if (activeProjectId && activeProjectId !== id) {
-      const targetDate = activeProjectDate || today;
-      const oldLog = appData.dailyLogs[targetDate]?.[activeProjectId];
-      if (oldLog) {
-        oldLog.elapsedSeconds = elapsedNow(oldLog);
-        oldLog.timerRunning = false;
-        oldLog.lastStartedAt = null;
-      }
-    }
-
-    if (!appData.dailyLogs[today][id]) {
-      appData.dailyLogs[today][id] = { elapsedSeconds: 0, completed: false };
-    }
-
-    const log = appData.dailyLogs[today][id];
-    if (log.completed) log.completed = false;
-    log.timerRunning = true;
-    log.lastStartedAt = Date.now();
-
-    activeProjectId = id;
-    activeProjectDate = today;
-    const block = $('active-timer-block');
-    if (block) block.classList.add('active');
-
-    persist();
-    renderUI();
-  }
-
-  function handlePause(id) {
-    const targetDate = (id === activeProjectId && activeProjectDate) ? activeProjectDate : todayKey();
-    const log = appData.dailyLogs[targetDate]?.[id];
-    if (!log || !log.timerRunning) return;
-
-    log.elapsedSeconds = elapsedNow(log);
-    log.timerRunning = false;
-    log.lastStartedAt = null;
-
-    activeProjectId = null;
-    activeProjectDate = null;
-    const block = $('active-timer-block');
-    if (block) block.classList.remove('active');
-
-    persist();
-    renderUI();
-  }
-
-  function handleDone(id) {
-    const targetDate = (id === activeProjectId && activeProjectDate) ? activeProjectDate : todayKey();
-    if (!appData.dailyLogs[targetDate]) appData.dailyLogs[targetDate] = {};
-    if (!appData.dailyLogs[targetDate][id]) {
-      appData.dailyLogs[targetDate][id] = { elapsedSeconds: 0 };
-    }
-
-    const log = appData.dailyLogs[targetDate][id];
-    log.elapsedSeconds = elapsedNow(log);
-    log.timerRunning = false;
-    log.lastStartedAt = null;
-    log.completed = true;
-    log.completedAt = Date.now();
-
-    if (activeProjectId === id) {
-      activeProjectId = null;
-      activeProjectDate = null;
-      const block = $('active-timer-block');
-      if (block) block.classList.remove('active');
-    }
-
-    persist();
-    renderUI();
-  }
-
-  function handleUndoDone(id) {
-    const today = todayKey();
-    if (appData.dailyLogs[today]?.[id]) {
-      appData.dailyLogs[today][id].completed = false;
-      appData.dailyLogs[today][id].completedAt = null;
-      persist();
-      renderUI();
-    }
-  }
-
-  /* =========================================================================
-     MODAL CONTROLS & SAVE LOGIC
-  ========================================================================= */
-  function openAddModal() {
-    $('schedule-modal').classList.add('active');$('project-name').focus();
-  }
-
-  function closeModal(modalId) {
-    $(modalId).classList.remove('active');
-  }
-
-  function saveNewProject(e) {
-    e.preventDefault();
-
-    const name = $('project-name').value.trim();
-    const minutes = Number($('project-minutes').value);
+    const name = nameInp.value.trim();
+    const minutes = Number(minInp.value);
     if (!name || minutes < 1) return;
 
     const newId = 'proj_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
     const today = todayKey();
 
     appData.projects[newId] = {
-      name,
+      name: name,
       targetMinutes: Math.round(minutes),
       createdAt: Date.now()
     };
@@ -742,24 +480,28 @@
     };
 
     persist();
-    $('project-form').reset();$('project-minutes').value = 120;
+    const form = $('project-form');
+    if (form) form.reset();
+    minInp.value = 120;
     closeModal('schedule-modal');
     showToast('Project saved successfully.');
     renderUI();
-  }
+  };
 
-  function openEditModal(id) {
+  window.openEditModal = function(id) {
     const p = appData.projects[id];
     if (!p) return;
-    const log = appData.dailyLogs[todayKey()]?.[id] || {};
+    const log = appData.dailyLogs[todayKey()] ? appData.dailyLogs[todayKey()][id] : null;
 
     $('edit-project-id').value = id;
-    $('edit-project-name').value = p.name \vert{}\vert{} '';$('edit-project-minutes').value = Math.round(targetMinutes(p));
-    $('edit-logged-minutes').value = Math.floor(elapsedNow(log) / 60);$('edit-modal').classList.add('active');
-  }
+    $('edit-project-name').value = p.name || '';
+    $('edit-project-minutes').value = Math.round(targetMinutes(p));
+    $('edit-logged-minutes').value = Math.floor(elapsedNow(log) / 60);
+    $('edit-modal').classList.add('active');
+  };
 
-  function updateProjectDetails(e) {
-    e.preventDefault();
+  window.updateProjectDetails = function(e) {
+    if (e && e.preventDefault) e.preventDefault();
 
     const id = $('edit-project-id').value;
     const name = $('edit-project-name').value.trim();
@@ -800,6 +542,248 @@
     closeModal('edit-modal');
     showToast('Project updated.');
     renderUI();
+  };
+
+  window.handleStart = function(id) {
+    const today = todayKey();
+    if (!appData.dailyLogs[today]) appData.dailyLogs[today] = {};
+
+    if (activeProjectId && activeProjectId !== id) {
+      const targetDate = activeProjectDate || today;
+      const oldLog = appData.dailyLogs[targetDate] ? appData.dailyLogs[targetDate][activeProjectId] : null;
+      if (oldLog) {
+        oldLog.elapsedSeconds = elapsedNow(oldLog);
+        oldLog.timerRunning = false;
+        oldLog.lastStartedAt = null;
+      }
+    }
+
+    if (!appData.dailyLogs[today][id]) {
+      appData.dailyLogs[today][id] = { elapsedSeconds: 0, completed: false };
+    }
+
+    const log = appData.dailyLogs[today][id];
+    if (log.completed) log.completed = false;
+    log.timerRunning = true;
+    log.lastStartedAt = Date.now();
+
+    activeProjectId = id;
+    activeProjectDate = today;
+    const block = $('active-timer-block');
+    if (block) block.classList.add('active');
+
+    persist();
+    renderUI();
+  };
+
+  window.handlePause = function(id) {
+    const targetDate = (id === activeProjectId && activeProjectDate) ? activeProjectDate : todayKey();
+    const log = appData.dailyLogs[targetDate] ? appData.dailyLogs[targetDate][id] : null;
+    if (!log || !log.timerRunning) return;
+
+    log.elapsedSeconds = elapsedNow(log);
+    log.timerRunning = false;
+    log.lastStartedAt = null;
+
+    activeProjectId = null;
+    activeProjectDate = null;
+    const block = $('active-timer-block');
+    if (block) block.classList.remove('active');
+
+    persist();
+    renderUI();
+  };
+
+  window.handleDone = function(id) {
+    const targetDate = (id === activeProjectId && activeProjectDate) ? activeProjectDate : todayKey();
+    if (!appData.dailyLogs[targetDate]) appData.dailyLogs[targetDate] = {};
+    if (!appData.dailyLogs[targetDate][id]) {
+      appData.dailyLogs[targetDate][id] = { elapsedSeconds: 0 };
+    }
+
+    const log = appData.dailyLogs[targetDate][id];
+    log.elapsedSeconds = elapsedNow(log);
+    log.timerRunning = false;
+    log.lastStartedAt = null;
+    log.completed = true;
+    log.completedAt = Date.now();
+
+    if (activeProjectId === id) {
+      activeProjectId = null;
+      activeProjectDate = null;
+      const block = $('active-timer-block');
+      if (block) block.classList.remove('active');
+    }
+
+    persist();
+    renderUI();
+  };
+
+  window.handleUndoDone = function(id) {
+    const today = todayKey();
+    if (appData.dailyLogs[today] && appData.dailyLogs[today][id]) {
+      appData.dailyLogs[today][id].completed = false;
+      appData.dailyLogs[today][id].completedAt = null;
+      persist();
+      renderUI();
+    }
+  };
+
+  window.changeMonth = function(delta) {
+    currentCalDate.setMonth(currentCalDate.getMonth() + delta);
+    renderCalendar();
+  };
+
+  window.signIn = function() {
+    if (typeof firebase === 'undefined') {
+      showToast('Firebase library not loaded', 'error');
+      return;
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).catch(function(err) {
+      showToast(err.message, 'error');
+    });
+  };
+
+  window.signOut = function() {
+    if (typeof firebase !== 'undefined') {
+      firebase.auth().signOut();
+    }
+  };
+
+  window.exportAnalytics = function() {
+    if (!appData.dailyLogs || !Object.keys(appData.dailyLogs).length) {
+      showToast('No logged data available for export.', 'error');
+      return;
+    }
+    let csv = 'Date,Project Name,Target Minutes,Logged Time (HH:MM:SS),Status\n';
+
+    Object.keys(appData.dailyLogs).sort().forEach(function(date) {
+      Object.keys(appData.dailyLogs[date] || {}).forEach(function(id) {
+        const p = appData.projects[id];
+        const l = appData.dailyLogs[date][id] || {};
+        const name = p ? p.name : 'Archived/Unknown Project';
+        const target = p ? Math.round(targetMinutes(p)) : 'N/A';
+        csv += '"' + date + '","' + String(name).replace(/"/g, '""') + '","' + target + '","' + formatTime(l.elapsedSeconds || 0) + '","' + (l.completed ? 'Completed' : 'Incomplete') + '"\n';
+      });
+    });
+
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'Project_Analytics_' + todayKey() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  /* =========================================================================
+     OPERATIONAL TIMERS & MECHANICS
+  ========================================================================= */
+  function targetMinutes(p) {
+    if (!p) return 0;
+    if (Number.isFinite(Number(p.targetMinutes))) return Number(p.targetMinutes);
+    if (Number.isFinite(Number(p.targetHours))) return Number(p.targetHours) * 60;
+    return 0;
+  }
+
+  function elapsedNow(log) {
+    if (!log) return 0;
+    let e = Number(log.elapsedSeconds) || 0;
+    if (log.timerRunning && log.lastStartedAt) {
+      e += Math.max(0, Math.floor((Date.now() - Number(log.lastStartedAt)) / 1000));
+    }
+    return e;
+  }
+
+  function determineActive() {
+    let d = new Date();
+    for (let i = 0; i < 2; i++) {
+      const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const logs = appData.dailyLogs[k] || {};
+      const foundId = Object.keys(logs).find(function(id) { return logs[id] && logs[id].timerRunning; });
+      if (foundId) {
+        activeProjectId = foundId;
+        activeProjectDate = k;
+        const block = $('active-timer-block');
+        if (block) block.classList.add('active');
+        return;
+      }
+      d.setDate(d.getDate() - 1);
+    }
+    activeProjectId = null;
+    activeProjectDate = null;
+    const block = $('active-timer-block');
+    if (block) block.classList.remove('active');
+  }
+
+  function formatTime(sec) {
+    sec = Math.max(0, Math.floor(Number(sec) || 0));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function humanMinutes(sec) {
+    sec = Math.max(0, Math.floor(Number(sec) || 0));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+    return h ? (h + 'h ' + m + 'm') : (m + 'm');
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, function(c) {
+      return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c];
+    });
+  }
+
+  function startClock() {
+    stopClock();
+    displayInterval = setInterval(updateClocks, 1000);
+  }
+
+  function stopClock() {
+    if (displayInterval) clearInterval(displayInterval);
+  }
+
+  function updateClocks() {
+    const today = todayKey();
+    const logs = appData.dailyLogs[today] || {};
+    let total = 0;
+
+    Object.keys(appData.projects).forEach(function(id) {
+      const p = appData.projects[id];
+      const log = logs[id] || {};
+      const targetSec = targetMinutes(p) * 60;
+      const elapsed = elapsedNow(log);
+      const isDone = Boolean(log.completed);
+      const rem = isDone ? 0 : Math.max(0, targetSec - elapsed);
+      total += rem;
+
+      const fill = $('chart-bar-' + id);
+      const time = $('chart-time-' + id);
+      if (fill && time) {
+        fill.style.width = (targetSec ? Math.min(100, (elapsed / targetSec) * 100) : 0) + '%';
+        time.textContent = isDone ? 'Done' : humanMinutes(rem);
+      }
+
+      const listTimer = $('list-timer-' + id);
+      if (listTimer) listTimer.textContent = formatTime(rem);
+    });
+
+    const gTotal = $('global-total-timer');
+    if (gTotal) gTotal.textContent = formatTime(total);
+    const cTotal = $('chart-total-remaining');
+    if (cTotal) cTotal.textContent = humanMinutes(total);
+
+    if (activeProjectId && appData.projects[activeProjectId]) {
+      const p = appData.projects[activeProjectId];
+      const targetDate = activeProjectDate || today;
+      const log = (appData.dailyLogs[targetDate] && appData.dailyLogs[targetDate][activeProjectId]) ? appData.dailyLogs[targetDate][activeProjectId] : {};
+      const rem = Math.max(0, (targetMinutes(p) * 60) - elapsedNow(log));
+      $('global-active-title').textContent = 'Active: ' + p.name;
+      $('global-active-timer').textContent = formatTime(rem);
+    } else {
+      $('global-active-title').textContent = 'No Active Project';
+      $('global-active-timer').textContent = '00:00:00';
+    }
   }
 
   /* =========================================================================
@@ -825,40 +809,40 @@
       return;
     }
 
-    ids.forEach(id => {
+    ids.forEach(function(id) {
       const p = appData.projects[id];
       const log = logs[id] || {};
-      const isDone = !!log.completed;
-      const isActive = !!log.timerRunning;
+      const isDone = Boolean(log.completed);
+      const isActive = Boolean(log.timerRunning);
       const rem = isDone ? 0 : Math.max(0, (targetMinutes(p) * 60) - elapsedNow(log));
 
       const li = document.createElement('li');
-      li.className = `project-item ${isDone ? 'done' : ''} ${isActive ? 'active-item' : ''}`;
+      li.className = 'project-item ' + (isDone ? 'done' : '') + ' ' + (isActive ? 'active-item' : '');
 
-      li.innerHTML = `
-        <div class="project-top-row">
-          <div class="project-info">
-            <h4>${escapeHtml(p.name || 'Unnamed')}</h4>
-            <span>Target: ${Math.round(targetMinutes(p))} min · Logged: ${Math.floor(elapsedNow(log) / 60)} min</span>
-          </div>
-          <div class="project-timer" id="list-timer-${id}">${formatTime(rem)}</div>
-        </div>
-        ${isDone ? `
-          <div class="completed-row">
-            <span class="completed-label">✓ Completed</span>
-            <button class="btn-icon undo" onclick="handleUndoDone('${id}')">↺ Undo</button>
-          </div>
-        ` : `
-          <div class="project-controls">
-            <button class="btn-icon" onclick="openEditModal('${id}')">✎ Edit</button>
-            ${isActive 
-              ? `<button class="btn-icon pause" onclick="handlePause('${id}')">⏸ Pause</button>` 
-              : `<button class="btn-icon play" onclick="handleStart('${id}')">▶ Start</button>`
-            }
-            <button class="btn-icon done" onclick="handleDone('${id}')">✓ Done</button>
-          </div>
-        `}
-      `;
+      let ctrlHtml = '';
+      if (isDone) {
+        ctrlHtml = '<div class="completed-row">' +
+                     '<span class="completed-label">✓ Completed</span>' +
+                     '<button class="btn-icon undo" onclick="handleUndoDone(\'' + id + '\')">↺ Undo</button>' +
+                   '</div>';
+      } else {
+        ctrlHtml = '<div class="project-controls">' +
+                     '<button class="btn-icon" onclick="openEditModal(\'' + id + '\')">✎ Edit</button>' +
+                     (isActive 
+                       ? '<button class="btn-icon pause" onclick="handlePause(\'' + id + '\')">⏸ Pause</button>' 
+                       : '<button class="btn-icon play" onclick="handleStart(\'' + id + '\')">▶ Start</button>') +
+                     '<button class="btn-icon done" onclick="handleDone(\'' + id + '\')">✓ Done</button>' +
+                   '</div>';
+      }
+
+      li.innerHTML = '<div class="project-top-row">' +
+                       '<div class="project-info">' +
+                         '<h4>' + escapeHtml(p.name || 'Unnamed') + '</h4>' +
+                         '<span>Target: ' + Math.round(targetMinutes(p)) + ' min · Logged: ' + Math.floor(elapsedNow(log) / 60) + ' min</span>' +
+                       '</div>' +
+                       '<div class="project-timer" id="list-timer-' + id + '">' + formatTime(rem) + '</div>' +
+                     '</div>' + ctrlHtml;
+
       list.appendChild(li);
     });
   }
@@ -874,17 +858,15 @@
       return;
     }
 
-    ids.forEach((id, i) => {
+    ids.forEach(function(id, i) {
       const p = appData.projects[id];
       const row = document.createElement('div');
       row.className = 'chart-row';
-      row.innerHTML = `
-        <span class="chart-label" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
-        <div class="chart-bar-bg">
-          <div id="chart-bar-${id}" class="chart-bar-fill" style="width:0%; background:${colors[i % colors.length]}"></div>
-        </div>
-        <span id="chart-time-${id}" class="chart-time">--</span>
-      `;
+      row.innerHTML = '<span class="chart-label" title="' + escapeHtml(p.name) + '">' + escapeHtml(p.name) + '</span>' +
+                      '<div class="chart-bar-bg">' +
+                        '<div id="chart-bar-' + id + '" class="chart-bar-fill" style="width:0%; background:' + colors[i % colors.length] + '"></div>' +
+                      '</div>' +
+                      '<span id="chart-time-' + id + '" class="chart-time">--</span>';
       c.appendChild(row);
     });
   }
@@ -897,7 +879,7 @@
     c.innerHTML = '';
     const y = currentCalDate.getFullYear(), m = currentCalDate.getMonth();
     const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    headerTitle.textContent = `${names[m]} ${y}`;
+    headerTitle.textContent = names[m] + ' ' + y;
 
     const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
     const today = todayKey();
@@ -909,19 +891,19 @@
     }
 
     for (let d = 1; d <= days; d++) {
-      const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const key = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
       const cell = document.createElement('div');
       cell.className = 'cal-cell';
-      cell.innerHTML = `<div>${d}</div>`;
+      cell.innerHTML = '<div>' + d + '</div>';
 
       const logs = appData.dailyLogs[key] || {};
       const loggedIds = Object.keys(logs);
       const totalForDay = (key === today) ? Object.keys(appData.projects).length : loggedIds.length;
-      const done = loggedIds.filter(id => logs[id]?.completed).length;
+      const done = loggedIds.filter(function(id) { return logs[id] && logs[id].completed; }).length;
 
       if (key === today) {
         cell.classList.add('today');
-        if (totalForDay && done < totalForDay) cell.innerHTML += `<div class="rem-badge">${totalForDay - done}</div>`;
+        if (totalForDay && done < totalForDay) cell.innerHTML += '<div class="rem-badge">' + (totalForDay - done) + '</div>';
         else if (totalForDay && done === totalForDay) cell.innerHTML += '<div class="status-dot-sub dot-done"></div>';
       } else if (new Date(key + 'T00:00:00') < new Date(today + 'T00:00:00') && totalForDay > 0) {
         if (done === totalForDay) cell.classList.add('all-done');
@@ -931,67 +913,103 @@
     }
   }
 
-  function changeMonth(delta) {
-    currentCalDate.setMonth(currentCalDate.getMonth() + delta);
-    renderCalendar();
-  }
-
   function renderStreak() {
     const el = $('streak-counter');
     if (!el) return;
     let d = new Date(), streak = 0, t = todayKey();
     const todayLogs = appData.dailyLogs[t] || {}, todayTotal = Object.keys(appData.projects).length;
-    const todayDone = todayTotal > 0 && Object.keys(appData.projects).every(id => todayLogs[id]?.completed);
+    const todayDone = todayTotal > 0 && Object.keys(appData.projects).every(function(id) { return todayLogs[id] && todayLogs[id].completed; });
 
     if (!todayDone) d.setDate(d.getDate() - 1);
 
     while (true) {
-      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
       const logs = appData.dailyLogs[k] || {};
       const loggedIds = Object.keys(logs);
 
       if (loggedIds.length === 0) break;
-      if (loggedIds.every(id => logs[id]?.completed)) {
+      if (loggedIds.every(function(id) { return logs[id] && logs[id].completed; })) {
         streak++;
         d.setDate(d.getDate() - 1);
-      } else break;
+      } else {
+        break;
+      }
     }
-    el.textContent = `${streak} Day Streak`;
+    el.textContent = streak + ' Day Streak';
   }
 
-  function exportAnalytics() {
-    if (!Object.keys(appData.dailyLogs).length) {
-      showToast('No logged data available for export.', 'error');
-      return;
+  /* =========================================================================
+     APP BOOTSTRAPPER
+  ========================================================================= */
+  function initApp() {
+    const dateEl = $('current-date-display');
+    if (dateEl) {
+      dateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
-    let csv = 'Date,Project Name,Target Minutes,Logged Time (HH:MM:SS),Status\n';
+    
+    loadFromLocalStorage();
+    determineActive();
+    renderUI();
+    startClock();
 
-    Object.keys(appData.dailyLogs).sort().forEach(date => {
-      Object.keys(appData.dailyLogs[date] || {}).forEach(id => {
-        const p = appData.projects[id], l = appData.dailyLogs[date][id] || {};
-        const name = p?.name || 'Archived/Unknown Project';
-        const target = p ? Math.round(targetMinutes(p)) : 'N/A';
-        csv += `"${date}","${String(name).replaceAll('"', '""')}","${target}","${formatTime(l.elapsedSeconds || 0)}","${l.completed ? 'Completed' : 'Incomplete'}"\n`;
-      });
-    });
+    try {
+      if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
 
-    const a = document.createElement('a');
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-    a.download = `Project_Analytics_${todayKey()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+        firebase.database().ref('.info/connected').on('value', function(snap) {
+          if (snap.val() === true && currentUser) {
+            usingFirebase = true;
+            setStatus('online');
+          } else {
+            usingFirebase = false;
+            setStatus('local');
+          }
+        });
+
+        firebase.auth().onAuthStateChanged(function(user) {
+          if (user) {
+            currentUser = user;
+            $('user-display-email').textContent = user.email || '';
+            $('btn-login').style.display = 'none';
+            $('btn-logout').style.display = 'inline-flex';
+
+            userRef = firebase.database().ref('users/' + user.uid);
+            userRef.on('value', function(snap) {
+              const val = snap.val();
+              if (val) {
+                appData = val;
+                if (!appData.projects) appData.projects = {};
+                if (!appData.dailyLogs) appData.dailyLogs = {};
+                localStorage.setItem('daily_ops_data', JSON.stringify(appData));
+                determineActive();
+                renderUI();
+              }
+            });
+            usingFirebase = true;
+            setStatus('online');
+          } else {
+            currentUser = null;
+            $('user-display-email').textContent = '';
+            $('btn-login').style.display = 'inline-flex';
+            $('btn-logout').style.display = 'none';
+            usingFirebase = false;
+            setStatus('local');
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Operating in pure local storage mode:", e);
+      usingFirebase = false;
+      setStatus('local');
+    }
   }
 
-  // Bind dynamic card actions to window
-  window.handleStart = handleStart;
-  window.handlePause = handlePause;
-  window.handleDone = handleDone;
-  window.handleUndoDone = handleUndoDone;
-  window.openEditModal = openEditModal;
-
-  // Run app on DOM load
-  window.addEventListener('DOMContentLoaded', initApp);
+  // Ensure DOM is ready before firing setup
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
 </script>
 </body>
 </html>
