@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Daily Project Attendance & Schedule</title>
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
@@ -29,7 +29,7 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
-    
+
     body {
       min-height: 100vh;
       background: radial-gradient(circle at top, #16223a 0%, #0b1120 100%);
@@ -51,7 +51,7 @@
     }
     .header-left h1 { font-size: 28px; letter-spacing: -0.02em; margin-bottom: 4px; }
     .header-left p { color: var(--muted); font-size: 14px; }
-    
+
     .header-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     .user-profile { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
 
@@ -72,7 +72,7 @@
       border: 1px solid rgba(245,158,11,.2); color: var(--warning); font-size: 13px; font-weight: 600;
     }
 
-    /* Buttons */
+    /* Standard Buttons */
     .btn-main, .btn-secondary, .btn-danger {
       border-radius: 10px; padding: 9px 18px; border: 1px solid transparent;
       font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center;
@@ -105,7 +105,7 @@
     /* Main Grid */
     .main-grid { display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: start; }
     .stack { display: flex; flex-direction: column; gap: 32px; }
-    
+
     .card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 20px; padding: 26px; box-shadow: 0 10px 30px -10px rgba(0,0,0,.2);
@@ -123,7 +123,7 @@
     .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
     .calendar-weekdays { margin-bottom: 12px; }
     .calendar-weekdays div { text-align: center; color: var(--muted); font-size: 12px; font-weight: 600; }
-    
+
     .cal-cell {
       aspect-ratio: 1; border: 1px solid var(--border); border-radius: 8px; padding: 6px;
       position: relative; background: rgba(0,0,0,.2); font-size: 13px; display: flex; flex-direction: column; justify-content: space-between;
@@ -131,7 +131,7 @@
     .cal-cell.empty { border-color: transparent; background: transparent; }
     .cal-cell.today { border-color: var(--accent); background: rgba(59,130,246,.15); }
     .cal-cell.all-done { border-color: rgba(16,185,129,.5); background: rgba(16,185,129,.1); }
-    
+
     .status-dot-sub { width: 6px; height: 6px; border-radius: 50%; align-self: flex-end; margin-top: auto; }
     .dot-rem { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
     .dot-done { background: var(--success); box-shadow: 0 0 6px var(--success); }
@@ -158,13 +158,13 @@
     .project-item:hover { border-color: rgba(255,255,255,.15); }
     .project-item.done { border-color: rgba(16,185,129,.4); background: rgba(16,185,129,.05); }
     .project-item.active-item { border-color: var(--accent); background: rgba(59,130,246,.05); }
-    
+
     .project-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
     .project-info h4 { font-size: 15.5px; line-height: 1.4; margin-bottom: 6px; word-break: break-word; }
     .project-info span { font-size: 12.5px; color: var(--muted); }
     .project-timer { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600; color: var(--text); }
     .active-item .project-timer { color: var(--accent); }
-    
+
     .project-controls { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn-icon {
       flex: 1; min-height: 38px; border-radius: 8px; border: 1px solid var(--border);
@@ -174,11 +174,11 @@
     .btn-icon:hover { background: rgba(255,255,255,.1); }
     .btn-icon.play { color: #34d399; border-color: rgba(52,211,153,0.3); }
     .btn-icon.pause { color: #fbbf24; border-color: rgba(251,191,36,0.3); }
-    
+
     .completed-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; }
     .completed-label { color: #34d399; font-size: 13.5px; font-weight: 600; }
     .completed-row .undo { flex: none; padding: 6px 14px; min-height: 32px; font-size: 12px; }
-    
+
     .empty-state { grid-column: 1/-1; padding: 48px 20px; text-align: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: 16px; }
 
     /* Modals */
@@ -274,7 +274,7 @@
         </div>
         <div id="calendar-grid" class="calendar-grid"></div>
       </div>
-      
+
       <!-- Chart Progress Card -->
       <div class="card">
         <div class="card-header">
@@ -349,9 +349,7 @@
 
 <script>
   /* =========================================================================
-     HYBRID STORAGE ENGINE
-     - Loads localStorage instantly so the app is always dynamic
-     - Gracefully links to Firebase in the background without blocking execution
+     HYBRID STORAGE ENGINE (Local Storage by default + Firebase Cloud Sync)
   ========================================================================= */
   const firebaseConfig = {
     apiKey: "AIzaSyBtO6wiJLk-9zjtvA7EJC6bJ1AEGcb6_VU",
@@ -426,52 +424,52 @@
   }
 
   function initApp() {
-    // 1. Immediately read local storage so the UI is active right away
     loadFromLocalStorage();
     startClock();
 
-    // 2. Safely connect Firebase without blocking UI if offline
     try {
-      firebase.initializeApp(firebaseConfig);
-      
-      firebase.database().ref('.info/connected').on('value', snap => {
-        if (snap.val() === true && currentUser) {
-          usingFirebase = true;
-          setStatus('online');
-        } else {
-          usingFirebase = false;
-          setStatus('local');
-        }
-      });
+      if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
 
-      firebase.auth().onAuthStateChanged(user => {
-        if (user) {
-          currentUser = user;
-          $('user-display-email').textContent = user.email;
-          $('btn-login').style.display = 'none';$('btn-logout').style.display = 'inline-flex';
+        firebase.database().ref('.info/connected').on('value', snap => {
+          if (snap.val() === true && currentUser) {
+            usingFirebase = true;
+            setStatus('online');
+          } else {
+            usingFirebase = false;
+            setStatus('local');
+          }
+        });
 
-          userRef = firebase.database().ref(`users/${user.uid}`);
-          userRef.on('value', snap => {
-            const val = snap.val();
-            if (val) {
-              appData = val;
-              if (!appData.projects) appData.projects = {};
-              if (!appData.dailyLogs) appData.dailyLogs = {};
-              localStorage.setItem('daily_ops_data', JSON.stringify(appData));
-              determineActive();
-              renderUI();
-            }
-          });
-          usingFirebase = true;
-          setStatus('online');
-        } else {
-          currentUser = null;
-          $('user-display-email').textContent = '';
-          $('btn-login').style.display = 'inline-flex';$('btn-logout').style.display = 'none';
-          usingFirebase = false;
-          setStatus('local');
-        }
-      });
+        firebase.auth().onAuthStateChanged(user => {
+          if (user) {
+            currentUser = user;
+            $('user-display-email').textContent = user.email;
+            $('btn-login').style.display = 'none';$('btn-logout').style.display = 'inline-flex';
+
+            userRef = firebase.database().ref(`users/${user.uid}`);
+            userRef.on('value', snap => {
+              const val = snap.val();
+              if (val) {
+                appData = val;
+                if (!appData.projects) appData.projects = {};
+                if (!appData.dailyLogs) appData.dailyLogs = {};
+                localStorage.setItem('daily_ops_data', JSON.stringify(appData));
+                determineActive();
+                renderUI();
+              }
+            });
+            usingFirebase = true;
+            setStatus('online');
+          } else {
+            currentUser = null;
+            $('user-display-email').textContent = '';
+            $('btn-login').style.display = 'inline-flex';$('btn-logout').style.display = 'none';
+            usingFirebase = false;
+            setStatus('local');
+          }
+        });
+      }
     } catch (e) {
       console.warn("Operating in pure local storage mode:", e);
       usingFirebase = false;
@@ -480,6 +478,10 @@
   }
 
   function signIn() {
+    if (typeof firebase === 'undefined') {
+      showToast('Firebase library not loaded', 'error');
+      return;
+    }
     const provider = new firebase.auth.GoogleAuthProvider();
     firebase.auth().signInWithPopup(provider).catch(err => {
       showToast(err.message, 'error');
@@ -487,7 +489,9 @@
   }
 
   function signOut() {
-    firebase.auth().signOut();
+    if (typeof firebase !== 'undefined') {
+      firebase.auth().signOut();
+    }
   }
 
   /* =========================================================================
@@ -599,7 +603,6 @@
     const today = todayKey();
     if (!appData.dailyLogs[today]) appData.dailyLogs[today] = {};
 
-    // Pause any previously running project
     if (activeProjectId && activeProjectId !== id) {
       const targetDate = activeProjectDate || today;
       const oldLog = appData.dailyLogs[targetDate]?.[activeProjectId];
@@ -725,7 +728,6 @@
     const log = appData.dailyLogs[todayKey()]?.[id] || {};
 
     $('edit-project-id').value = id;
-    // Correct logical OR syntax:
     $('edit-project-name').value = p.name \vert{}\vert{} '';$('edit-project-minutes').value = Math.round(targetMinutes(p));
     $('edit-logged-minutes').value = Math.floor(elapsedNow(log) / 60);$('edit-modal').classList.add('active');
   }
@@ -947,7 +949,21 @@
     a.remove();
   }
 
-  // Launch application
+  // Explicit window bindings for inline HTML handlers
+  window.signIn = signIn;
+  window.signOut = signOut;
+  window.openAddModal = openAddModal;
+  window.closeModal = closeModal;
+  window.saveNewProject = saveNewProject;
+  window.openEditModal = openEditModal;
+  window.updateProjectDetails = updateProjectDetails;
+  window.handleStart = handleStart;
+  window.handlePause = handlePause;
+  window.handleDone = handleDone;
+  window.handleUndoDone = handleUndoDone;
+  window.changeMonth = changeMonth;
+  window.exportAnalytics = exportAnalytics;
+
   initApp();
 </script>
 </body>
